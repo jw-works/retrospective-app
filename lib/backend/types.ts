@@ -28,6 +28,15 @@ export type Entry = {
   authorParticipantId: string;
   type: EntryType;
   content: string;
+  groupId: string | null;
+  createdAt: string;
+};
+
+export type EntryGroup = {
+  id: string;
+  sessionId: string;
+  type: EntryType;
+  name: string;
   createdAt: string;
 };
 
@@ -67,6 +76,7 @@ export type StoreData = {
   sessions: Session[];
   participants: Participant[];
   entries: Entry[];
+  groups: EntryGroup[];
   votes: Vote[];
   happinessChecks: HappinessCheck[];
   navigation: NavigationState[];
@@ -87,6 +97,7 @@ export type SessionStateResponse = {
   session: Pick<Session, "id" | "slug" | "title" | "phase" | "createdAt" | "updatedAt">;
   participants: PublicParticipant[];
   entries: (Entry & { votes: number; votedByViewer: boolean })[];
+  groups: EntryGroup[];
   navigation: NavigationState;
   viewer: SessionViewer | null;
   happiness: {

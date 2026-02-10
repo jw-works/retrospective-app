@@ -4,6 +4,7 @@ import path from "node:path";
 import type {
   AuthToken,
   Entry,
+  EntryGroup,
   EntryType,
   HappinessCheck,
   NavigationState,
@@ -25,6 +26,7 @@ const createInitialData = (): StoreData => ({
   sessions: [],
   participants: [],
   entries: [],
+  groups: [],
   votes: [],
   happinessChecks: [],
   navigation: [],
@@ -53,7 +55,20 @@ async function readStore(): Promise<StoreData> {
 
   try {
     const raw = await readFile(DATA_FILE, "utf8");
-    return JSON.parse(raw) as StoreData;
+    const parsed = JSON.parse(raw) as Partial<StoreData>;
+    return {
+      sessions: parsed.sessions ?? [],
+      participants: parsed.participants ?? [],
+      entries: (parsed.entries ?? []).map((entry) => ({
+        ...entry,
+        groupId: entry.groupId ?? null
+      })),
+      groups: parsed.groups ?? [],
+      votes: parsed.votes ?? [],
+      happinessChecks: parsed.happinessChecks ?? [],
+      navigation: parsed.navigation ?? [],
+      authTokens: parsed.authTokens ?? []
+    };
   } catch {
     const initial = createInitialData();
     await writeFile(DATA_FILE, JSON.stringify(initial, null, 2), "utf8");
@@ -111,6 +126,20 @@ function getNavigation(store: StoreData, sessionId: string): NavigationState {
   return nav;
 }
 
+function getGroupEntries(store: StoreData, groupId: string) {
+  return store.entries.filter((entry) => entry.groupId === groupId);
+}
+
+function cleanupGroupIfSmall(store: StoreData, groupId: string) {
+  const groupedEntries = getGroupEntries(store, groupId);
+  if (groupedEntries.length >= 2) return;
+
+  for (const entry of groupedEntries) {
+    entry.groupId = null;
+  }
+  store.groups = store.groups.filter((group) => group.id !== groupId);
+}
+
 function sessionStateFromStore(store: StoreData, session: Session, viewer: Participant | null): SessionStateResponse {
   const viewerVotes = viewer
     ? store.votes.filter((vote) => vote.sessionId === session.id && vote.participantId === viewer.id)
@@ -134,6 +163,8 @@ function sessionStateFromStore(store: StoreData, session: Session, viewer: Parti
       votedByViewer: viewer ? viewerVoteEntryIds.has(entry.id) : false
     }));
 
+  const groups = store.groups.filter((group) => group.sessionId === session.id);
+
   const sessionHappiness = store.happinessChecks.filter((item) => item.sessionId === session.id);
   const happinessTotal = sessionHappiness.reduce((sum, item) => sum + item.score, 0);
   const happinessAverage = sessionHappiness.length > 0 ? Number((happinessTotal / sessionHappiness.length).toFixed(2)) : null;
@@ -149,6 +180,7 @@ function sessionStateFromStore(store: StoreData, session: Session, viewer: Parti
     },
     participants,
     entries,
+    groups,
     navigation: getNavigation(store, session.id),
     viewer: viewer
       ? {
@@ -270,6 +302,7 @@ export const backendStore = {
         authorParticipantId: participant.id,
         type: input.type,
         content: input.content.trim(),
+        groupId: null,
         createdAt: nowIso()
       };
 
@@ -295,6 +328,7 @@ export const backendStore = {
 
       store.entries = store.entries.filter((item) => item.id !== entry.id);
       store.votes = store.votes.filter((item) => item.entryId !== entry.id);
+      if (entry.groupId) cleanupGroupIfSmall(store, entry.groupId);
       session.updatedAt = nowIso();
 
       return { success: true };
@@ -311,6 +345,7 @@ export const backendStore = {
 
       const sessionEntryIds = new Set(store.entries.filter((item) => item.sessionId === session.id).map((item) => item.id));
       store.entries = store.entries.filter((item) => item.sessionId !== session.id);
+      store.groups = store.groups.filter((group) => group.sessionId !== session.id);
       store.votes = store.votes.filter((item) => !sessionEntryIds.has(item.entryId));
       session.updatedAt = nowIso();
 
@@ -397,6 +432,97 @@ export const backendStore = {
         store.happinessChecks.push(next);
       }
 
+      session.updatedAt = nowIso();
+      return { success: true };
+    });
+  },
+
+  async createGroup(input: {
+    slug: string;
+    token: string;
+    sourceEntryId: string;
+    targetEntryId: string;
+    name: string;
+  }) {
+    return withStoreLock((store) => {
+      const session = getSessionBySlug(store, input.slug);
+      if (!session) throw new Error("Session not found");
+      getParticipantByToken(store, input.token, session.id);
+
+      const source = store.entries.find((entry) => entry.id === input.sourceEntryId && entry.sessionId === session.id);
+      const target = store.entries.find((entry) => entry.id === input.targetEntryId && entry.sessionId === session.id);
+      if (!source || !target) throw new Error("Entry not found");
+      if (source.id === target.id) throw new Error("Cannot group same entry");
+      if (source.type !== target.type) throw new Error("Entries must be on same side");
+      if (source.groupId || target.groupId) throw new Error("Entries already grouped");
+
+      const group: EntryGroup = {
+        id: randomUUID(),
+        sessionId: session.id,
+        type: source.type,
+        name: input.name.trim(),
+        createdAt: nowIso()
+      };
+      source.groupId = group.id;
+      target.groupId = group.id;
+      store.groups.push(group);
+      session.updatedAt = nowIso();
+      return group;
+    });
+  },
+
+  async addEntryToGroup(input: { slug: string; token: string; groupId: string; entryId: string }) {
+    return withStoreLock((store) => {
+      const session = getSessionBySlug(store, input.slug);
+      if (!session) throw new Error("Session not found");
+      getParticipantByToken(store, input.token, session.id);
+
+      const group = store.groups.find((item) => item.id === input.groupId && item.sessionId === session.id);
+      if (!group) throw new Error("Group not found");
+      const entry = store.entries.find((item) => item.id === input.entryId && item.sessionId === session.id);
+      if (!entry) throw new Error("Entry not found");
+      if (entry.groupId) throw new Error("Entry already grouped");
+      if (entry.type !== group.type) throw new Error("Entry side mismatch");
+
+      entry.groupId = group.id;
+      session.updatedAt = nowIso();
+      return { success: true };
+    });
+  },
+
+  async ungroupEntry(input: { slug: string; token: string; entryId: string }) {
+    return withStoreLock((store) => {
+      const session = getSessionBySlug(store, input.slug);
+      if (!session) throw new Error("Session not found");
+      getParticipantByToken(store, input.token, session.id);
+
+      const entry = store.entries.find((item) => item.id === input.entryId && item.sessionId === session.id);
+      if (!entry) throw new Error("Entry not found");
+      if (!entry.groupId) return { success: true };
+
+      const groupId = entry.groupId;
+      entry.groupId = null;
+      cleanupGroupIfSmall(store, groupId);
+      session.updatedAt = nowIso();
+      return { success: true };
+    });
+  },
+
+  async moveEntry(input: { slug: string; token: string; entryId: string; type: EntryType }) {
+    return withStoreLock((store) => {
+      const session = getSessionBySlug(store, input.slug);
+      if (!session) throw new Error("Session not found");
+      getParticipantByToken(store, input.token, session.id);
+
+      const entry = store.entries.find((item) => item.id === input.entryId && item.sessionId === session.id);
+      if (!entry) throw new Error("Entry not found");
+
+      if (entry.groupId) {
+        const groupId = entry.groupId;
+        entry.groupId = null;
+        cleanupGroupIfSmall(store, groupId);
+      }
+      entry.type = input.type;
       session.updatedAt = nowIso();
       return { success: true };
     });

@@ -16,8 +16,6 @@ import {
   buildDiscussionQueue,
   sortEntries,
   type DiscussionTopic,
-  type GroupEntry,
-  type ItemEntry,
   type RetroEntry,
   type Side,
 } from "@/lib/discussion";
@@ -94,18 +92,41 @@ function colorFromSeed(seed: string): { background: string; border: string; text
 
 function toRetroItems(
   entries: SessionEntry[],
+  groups: SessionStateResponse["groups"],
   type: SessionEntry["type"],
 ): RetroEntry[] {
-  return entries
-    .filter((entry) => entry.type === type)
+  const byType = entries.filter((entry) => entry.type === type);
+  const groupedIds = new Set<string>();
+
+  const groupEntries: RetroEntry[] = groups
+    .filter((group) => group.type === type)
+    .map((group) => {
+      const items = byType.filter((entry) => entry.groupId === group.id);
+      items.forEach((entry) => groupedIds.add(entry.id));
+      return {
+        kind: "group" as const,
+        id: group.id,
+        name: group.name,
+        items: items.map((entry) => ({ id: entry.id, text: entry.content })),
+        votes: items.reduce((sum, entry) => sum + entry.votes, 0),
+        voted: items.some((entry) => entry.votedByViewer),
+        ts: Date.parse(group.createdAt)
+      };
+    })
+    .filter((group) => group.items.length >= 2);
+
+  const standalone: RetroEntry[] = byType
+    .filter((entry) => !groupedIds.has(entry.id))
     .map((entry) => ({
       kind: "item" as const,
       id: entry.id,
       text: entry.content,
       votes: entry.votes,
       voted: entry.votedByViewer,
-      ts: Date.parse(entry.createdAt),
+      ts: Date.parse(entry.createdAt)
     }));
+
+  return [...standalone, ...groupEntries];
 }
 
 export default function Home() {
@@ -223,16 +244,23 @@ export default function Home() {
     setTeamName(state.session.title);
     const admin = state.participants.find((participant) => participant.isAdmin);
     if (admin) setAdminName(admin.name);
-    setWentRightItems(toRetroItems(state.entries, "went_right"));
-    setWentWrongItems(toRetroItems(state.entries, "went_wrong"));
-    setDiscussionMode(
-      state.navigation.activeSection === "discussion" ||
-        state.navigation.activeSection === "happiness",
-    );
-    setHappinessMode(
-      state.navigation.activeSection === "happiness" ||
-        state.navigation.activeSection === "done",
-    );
+    const nextRight = toRetroItems(state.entries, state.groups, "went_right");
+    const nextWrong = toRetroItems(state.entries, state.groups, "went_wrong");
+    setWentRightItems(nextRight);
+    setWentWrongItems(nextWrong);
+
+    const queue = buildDiscussionQueue(nextRight, nextWrong);
+    setDiscussionQueue(queue);
+    if (queue.length > 0) {
+      const targetId = state.navigation.discussionEntryId;
+      const queueIndex = targetId ? queue.findIndex((topic) => topic.id === targetId) : 0;
+      setDiscussionIndex(queueIndex >= 0 ? queueIndex : 0);
+    } else {
+      setDiscussionIndex(0);
+    }
+
+    setDiscussionMode(state.navigation.activeSection === "discussion" || state.navigation.activeSection === "happiness");
+    setHappinessMode(state.navigation.activeSection === "happiness" || state.navigation.activeSection === "done");
   }, []);
 
   const loadSessionState = useCallback(
@@ -376,6 +404,12 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [isSetupComplete, loadSessionState, participantToken, sessionSlug]);
 
+  useEffect(() => {
+    if (!isSetupComplete) return;
+    if (sessionState?.navigation.activeSection !== "done") return;
+    resetToCreateSession();
+  }, [isSetupComplete, resetToCreateSession, sessionState?.navigation.activeSection]);
+
   const addWentRight = () => {
     const next = wentRightInput.trim();
     if (!next) return;
@@ -479,70 +513,34 @@ export default function Home() {
   };
 
   const groupItemsInSide = (
-    side: Side,
+    _side: Side,
     sourceId: string,
     targetId: string,
     groupName: string,
   ) => {
-    const applyGroup = (items: RetroEntry[]) => {
-      const sourceEntry = items.find((item) => item.id === sourceId);
-      const targetEntry = items.find((item) => item.id === targetId);
-
-      if (!sourceEntry || !targetEntry) return items;
-      if (sourceEntry.kind !== "item" || targetEntry.kind !== "item")
-        return items;
-
-      const nextGroup: GroupEntry = {
-        kind: "group",
-        id: `group-${Date.now()}`,
-        name: groupName,
-        items: [
-          { id: targetEntry.id, text: targetEntry.text },
-          { id: sourceEntry.id, text: sourceEntry.text },
-        ],
-        votes: 0,
-        voted: false,
-        ts: Date.now(),
-      };
-
-      const filtered = items.filter(
-        (item) => item.id !== sourceId && item.id !== targetId,
-      );
-      return [...filtered, nextGroup];
-    };
-
-    if (side === "right") setWentRightItems((current) => applyGroup(current));
-    if (side === "wrong") setWentWrongItems((current) => applyGroup(current));
+    apiRequest(`/api/sessions/${sessionSlug}/groups`, {
+      method: "POST",
+      body: JSON.stringify({
+        sourceEntryId: sourceId,
+        targetEntryId: targetId,
+        name: groupName
+      })
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to create group");
+    });
   };
 
   const addItemToExistingGroup = (
-    side: Side,
+    _side: Side,
     sourceId: string,
     targetGroupId: string,
   ) => {
-    const applyAdd = (items: RetroEntry[]) => {
-      const sourceEntry = items.find((item) => item.id === sourceId);
-      const targetEntry = items.find((item) => item.id === targetGroupId);
-
-      if (!sourceEntry || !targetEntry) return items;
-      if (sourceEntry.kind !== "item" || targetEntry.kind !== "group")
-        return items;
-
-      const filtered = items.filter((item) => item.id !== sourceId);
-      return filtered.map((item) => {
-        if (item.id !== targetGroupId || item.kind !== "group") return item;
-        return {
-          ...item,
-          items: [
-            ...item.items,
-            { id: sourceEntry.id, text: sourceEntry.text },
-          ],
-        };
-      });
-    };
-
-    if (side === "right") setWentRightItems((current) => applyAdd(current));
-    if (side === "wrong") setWentWrongItems((current) => applyAdd(current));
+    apiRequest(`/api/sessions/${sessionSlug}/groups/${targetGroupId}/entries`, {
+      method: "POST",
+      body: JSON.stringify({ entryId: sourceId })
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to add to group");
+    });
   };
 
   const moveItemAcrossSides = (
@@ -550,96 +548,107 @@ export default function Home() {
     targetSide: Side,
     sourceId: string,
   ) => {
-    const sourceItems =
-      sourceSide === "right" ? wentRightItems : wentWrongItems;
-    const moved = sourceItems.find((entry) => entry.id === sourceId);
-    if (!moved || moved.kind !== "item") return;
-
-    if (sourceSide === "right") {
-      setWentRightItems((current) =>
-        current.filter((entry) => entry.id !== sourceId),
-      );
-    } else {
-      setWentWrongItems((current) =>
-        current.filter((entry) => entry.id !== sourceId),
-      );
-    }
-
-    addStandaloneItem(targetSide, moved.text);
+    if (sourceSide === targetSide) return;
+    const nextType = targetSide === "right" ? "went_right" : "went_wrong";
+    apiRequest(`/api/sessions/${sessionSlug}/entries/${sourceId}/move`, {
+      method: "POST",
+      body: JSON.stringify({ type: nextType })
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to move entry");
+    });
   };
 
-  const extractGroupedItem = (
+  const extractGroupedItem = async (
     sourceSide: Side,
     groupId: string,
     itemId: string,
-  ): string | null => {
-    const sourceItems =
-      sourceSide === "right" ? wentRightItems : wentWrongItems;
+  ): Promise<string | null> => {
+    const sourceItems = sourceSide === "right" ? wentRightItems : wentWrongItems;
     const targetGroup = sourceItems.find((entry) => entry.id === groupId);
     if (!targetGroup || targetGroup.kind !== "group") return null;
-
     const extracted = targetGroup.items.find((entry) => entry.id === itemId);
     if (!extracted) return null;
 
-    const remainingItems = targetGroup.items.filter(
-      (entry) => entry.id !== itemId,
-    );
-
-    const nextEntries: RetroEntry[] = [];
-    for (const entry of sourceItems) {
-      if (entry.id !== groupId) {
-        nextEntries.push(entry);
-        continue;
-      }
-
-      if (entry.kind !== "group") continue;
-
-      if (remainingItems.length >= 2) {
-        const updatedGroup: GroupEntry = { ...entry, items: remainingItems };
-        nextEntries.push(updatedGroup);
-        continue;
-      }
-
-      if (remainingItems.length === 1) {
-        nextEntries.push({
-          kind: "item",
-          id: `${sourceSide}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          text: remainingItems[0].text,
-          votes: 0,
-          voted: false,
-          ts: Date.now(),
-        });
-      }
-    }
-
-    if (sourceSide === "right") setWentRightItems(nextEntries);
-    if (sourceSide === "wrong") setWentWrongItems(nextEntries);
-
+    await apiRequest(`/api/sessions/${sessionSlug}/groups/${groupId}/entries/${itemId}`, {
+      method: "DELETE"
+    });
     return extracted.text;
   };
 
   const undoGroupedItem = (side: Side, groupId: string, itemId: string) => {
-    const text = extractGroupedItem(side, groupId, itemId);
-    if (!text) return;
-    addStandaloneItem(side, text);
+    void side;
+    extractGroupedItem(side, groupId, itemId).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to ungroup item");
+    });
   };
 
   const handleDropOnItem = (targetSide: Side, targetId: string) => {
-    void targetSide;
-    void targetId;
-    setApiError("Drag/group actions are not synced to backend yet.");
+    if (!dragging) return;
+
+    if (dragging.kind === "grouped-item") {
+      extractGroupedItem(dragging.sourceSide, dragging.groupId, dragging.itemId)
+        .then((text) => {
+          if (!text) return;
+          addStandaloneItem(targetSide, text);
+        })
+        .catch((error: unknown) => {
+          setApiError(error instanceof Error ? error.message : "Unable to move grouped item");
+        });
+      setDragging(null);
+      return;
+    }
+
+    if (dragging.sourceSide === targetSide) {
+      if (dragging.id === targetId) {
+        setDragging(null);
+        return;
+      }
+
+      const targetItems = targetSide === "right" ? wentRightItems : wentWrongItems;
+      const targetEntry = targetItems.find((entry) => entry.id === targetId);
+      if (targetEntry?.kind === "group") {
+        addItemToExistingGroup(targetSide, dragging.id, targetId);
+        setDragging(null);
+        return;
+      }
+
+      setPendingGroup({ side: targetSide, sourceId: dragging.id, targetId });
+      setGroupNameInput("New group");
+      setDragging(null);
+      return;
+    }
+
+    moveItemAcrossSides(dragging.sourceSide, targetSide, dragging.id);
     setDragging(null);
   };
 
   const createPendingGroup = () => {
-    setApiError("Grouping is not synced to backend yet.");
+    if (!pendingGroup) return;
+    const nextName = groupNameInput.trim();
+    if (!nextName) return;
+    groupItemsInSide(pendingGroup.side, pendingGroup.sourceId, pendingGroup.targetId, nextName);
     setPendingGroup(null);
     setGroupNameInput("");
   };
 
   const handleDropOnPanel = (targetSide: Side) => {
-    void targetSide;
-    setApiError("Drag/group actions are not synced to backend yet.");
+    if (!dragging) return;
+
+    if (dragging.kind === "grouped-item") {
+      extractGroupedItem(dragging.sourceSide, dragging.groupId, dragging.itemId)
+        .then((text) => {
+          if (!text) return;
+          addStandaloneItem(targetSide, text);
+        })
+        .catch((error: unknown) => {
+          setApiError(error instanceof Error ? error.message : "Unable to move grouped item");
+        });
+      setDragging(null);
+      return;
+    }
+
+    if (dragging.sourceSide === targetSide) return;
+    moveItemAcrossSides(dragging.sourceSide, targetSide, dragging.id);
     setDragging(null);
   };
 
@@ -650,11 +659,9 @@ export default function Home() {
     }
     const queue = buildDiscussionQueue(wentRightItems, wentWrongItems);
     if (!queue.length) return;
-    setDiscussionQueue(queue);
-    setDiscussionIndex(0);
     apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
       method: "POST",
-      body: JSON.stringify({ activeSection: "discussion" }),
+      body: JSON.stringify({ activeSection: "discussion", discussionEntryId: queue[0]?.id ?? null }),
     }).catch((error: unknown) => {
       setApiError(
         error instanceof Error ? error.message : "Unable to start discussion",
@@ -663,20 +670,34 @@ export default function Home() {
   };
 
   const nextDiscussion = () => {
+    if (!isAdmin) return;
     if (discussionIndex >= discussionQueue.length - 1) return;
-    setDiscussionIndex((index) => index + 1);
+    const nextTopic = discussionQueue[discussionIndex + 1];
+    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
+      method: "POST",
+      body: JSON.stringify({ activeSection: "discussion", discussionEntryId: nextTopic?.id ?? null }),
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to move to next topic");
+    });
   };
 
   const previousDiscussion = () => {
+    if (!isAdmin) return;
     if (discussionIndex === 0) return;
-    setDiscussionIndex((index) => index - 1);
+    const previousTopic = discussionQueue[discussionIndex - 1];
+    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
+      method: "POST",
+      body: JSON.stringify({ activeSection: "discussion", discussionEntryId: previousTopic?.id ?? null }),
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to move to previous topic");
+    });
   };
 
   const finishDiscussion = () => {
     if (!isAdmin) return;
     apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
       method: "POST",
-      body: JSON.stringify({ activeSection: "happiness" }),
+      body: JSON.stringify({ activeSection: "happiness", discussionEntryId: null }),
     }).catch((error: unknown) => {
       setApiError(
         error instanceof Error
