@@ -1,0 +1,237 @@
+{
+  "sessions": [
+    {
+      "id": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "slug": "sprint-test-retro-k1wyy5",
+      "title": "Sprint Test Retro",
+      "createdByParticipantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "phase": "discussing",
+      "createdAt": "2026-02-10T13:32:37.819Z",
+      "updatedAt": "2026-02-10T13:32:41.290Z"
+    },
+    {
+      "id": "516f06a1-ed8d-4aa3-95a9-0c1e17de9ba0",
+      "slug": "delete-all-check-mmu06h",
+      "title": "Delete All Check",
+      "createdByParticipantId": "7c1556e6-9374-4ac8-b242-fc7209187569",
+      "phase": "collecting",
+      "createdAt": "2026-02-10T13:32:56.631Z",
+      "updatedAt": "2026-02-10T13:32:56.856Z"
+    },
+    {
+      "id": "3300a0fd-ddd0-47ea-9995-9b99b9e9319c",
+      "slug": "delete-all-check-f2pxgv",
+      "title": "Delete All Check",
+      "createdByParticipantId": "53941139-e357-4371-a9a2-9952d87a439e",
+      "phase": "collecting",
+      "createdAt": "2026-02-10T13:33:12.895Z",
+      "updatedAt": "2026-02-10T13:33:13.092Z"
+    },
+    {
+      "id": "16b19951-5d6b-4844-8491-5feffd29e041",
+      "slug": "justforfix-s783s7",
+      "title": "JustForFix",
+      "createdByParticipantId": "5fc679d8-0890-4afc-84f0-9b9b242d93d7",
+      "phase": "collecting",
+      "createdAt": "2026-02-10T13:54:41.377Z",
+      "updatedAt": "2026-02-10T13:54:41.377Z"
+    }
+  ],
+  "participants": [
+    {
+      "id": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "name": "Admin",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T13:32:37.819Z"
+    },
+    {
+      "id": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "name": "Alice",
+      "isAdmin": false,
+      "createdAt": "2026-02-10T13:32:38.400Z"
+    },
+    {
+      "id": "7c1556e6-9374-4ac8-b242-fc7209187569",
+      "sessionId": "516f06a1-ed8d-4aa3-95a9-0c1e17de9ba0",
+      "name": "Owner",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T13:32:56.631Z"
+    },
+    {
+      "id": "53941139-e357-4371-a9a2-9952d87a439e",
+      "sessionId": "3300a0fd-ddd0-47ea-9995-9b99b9e9319c",
+      "name": "Owner",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T13:33:12.895Z"
+    },
+    {
+      "id": "5fc679d8-0890-4afc-84f0-9b9b242d93d7",
+      "sessionId": "16b19951-5d6b-4844-8491-5feffd29e041",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T13:54:41.377Z"
+    }
+  ],
+  "entries": [
+    {
+      "id": "052da32a-fd6a-445c-8e29-7fdfea7b0def",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "authorParticipantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "type": "went_right",
+      "content": "Shipping improved",
+      "createdAt": "2026-02-10T13:32:38.951Z"
+    },
+    {
+      "id": "fd4088b0-baf2-4b4e-b73a-95b4a70a523f",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "authorParticipantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "type": "went_right",
+      "content": "extra-1",
+      "createdAt": "2026-02-10T13:32:39.055Z"
+    },
+    {
+      "id": "4e861717-560d-4536-b066-6bc5a6d1daba",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "authorParticipantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "type": "went_right",
+      "content": "extra-2",
+      "createdAt": "2026-02-10T13:32:39.577Z"
+    },
+    {
+      "id": "7b0cfe86-7568-41f8-a5db-94754df62fb6",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "authorParticipantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "type": "went_right",
+      "content": "extra-3",
+      "createdAt": "2026-02-10T13:32:39.648Z"
+    },
+    {
+      "id": "3989d196-ec4d-4f96-8a41-678e94606300",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "authorParticipantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "type": "went_right",
+      "content": "extra-4",
+      "createdAt": "2026-02-10T13:32:39.718Z"
+    }
+  ],
+  "votes": [
+    {
+      "id": "65df0fb3-837c-4198-9ef7-dbd968573597",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "entryId": "fd4088b0-baf2-4b4e-b73a-95b4a70a523f",
+      "participantId": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "value": 1,
+      "createdAt": "2026-02-10T13:32:39.561Z"
+    },
+    {
+      "id": "65aa3a23-31bd-4dad-92af-0cae39e19417",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "entryId": "4e861717-560d-4536-b066-6bc5a6d1daba",
+      "participantId": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "value": 1,
+      "createdAt": "2026-02-10T13:32:39.631Z"
+    },
+    {
+      "id": "70664b79-b811-417c-9ebc-def36bbac944",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "entryId": "7b0cfe86-7568-41f8-a5db-94754df62fb6",
+      "participantId": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "value": 1,
+      "createdAt": "2026-02-10T13:32:39.702Z"
+    },
+    {
+      "id": "37f937d9-2158-483b-971b-c3dafb4f0e1f",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "entryId": "3989d196-ec4d-4f96-8a41-678e94606300",
+      "participantId": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "value": 1,
+      "createdAt": "2026-02-10T13:32:39.773Z"
+    },
+    {
+      "id": "bd5cba8b-d0bf-4e79-b3cb-22b12cc46160",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "entryId": "052da32a-fd6a-445c-8e29-7fdfea7b0def",
+      "participantId": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "value": 1,
+      "createdAt": "2026-02-10T13:32:39.797Z"
+    }
+  ],
+  "happinessChecks": [
+    {
+      "id": "b4947610-ef55-48f9-bab5-f2f9517d2ef0",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "participantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "score": 8,
+      "createdAt": "2026-02-10T13:32:41.274Z",
+      "updatedAt": "2026-02-10T13:32:41.274Z"
+    },
+    {
+      "id": "ecbc40bc-9ce1-4f6c-82de-baeb0aec01e8",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "participantId": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "score": 6,
+      "createdAt": "2026-02-10T13:32:41.290Z",
+      "updatedAt": "2026-02-10T13:32:41.290Z"
+    }
+  ],
+  "navigation": [
+    {
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "activeSection": "discussion",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T13:32:40.801Z"
+    },
+    {
+      "sessionId": "516f06a1-ed8d-4aa3-95a9-0c1e17de9ba0",
+      "activeSection": "retro",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T13:32:56.631Z"
+    },
+    {
+      "sessionId": "3300a0fd-ddd0-47ea-9995-9b99b9e9319c",
+      "activeSection": "retro",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T13:33:12.895Z"
+    },
+    {
+      "sessionId": "16b19951-5d6b-4844-8491-5feffd29e041",
+      "activeSection": "retro",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T13:54:41.377Z"
+    }
+  ],
+  "authTokens": [
+    {
+      "token": "7b52f0ad-2cba-4650-944d-1ab0550810f8",
+      "participantId": "0a0e30d4-26dd-47ed-9e19-39138f89ed7c",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "createdAt": "2026-02-10T13:32:37.819Z"
+    },
+    {
+      "token": "59f61d10-3368-448f-9b4d-a9366a6c581a",
+      "participantId": "6267f9a6-202f-49a8-9131-5ebb58635b7e",
+      "sessionId": "784ff0a2-5194-4ae2-b8f2-7bdb647637e3",
+      "createdAt": "2026-02-10T13:32:38.400Z"
+    },
+    {
+      "token": "49c71f5d-b811-460a-bd97-dd32124e8ec2",
+      "participantId": "7c1556e6-9374-4ac8-b242-fc7209187569",
+      "sessionId": "516f06a1-ed8d-4aa3-95a9-0c1e17de9ba0",
+      "createdAt": "2026-02-10T13:32:56.631Z"
+    },
+    {
+      "token": "5b953293-b4d9-4389-828a-6ddcc435ff93",
+      "participantId": "53941139-e357-4371-a9a2-9952d87a439e",
+      "sessionId": "3300a0fd-ddd0-47ea-9995-9b99b9e9319c",
+      "createdAt": "2026-02-10T13:33:12.895Z"
+    },
+    {
+      "token": "29b19d13-8228-4143-ad1d-4000771f390f",
+      "participantId": "5fc679d8-0890-4afc-84f0-9b9b242d93d7",
+      "sessionId": "16b19951-5d6b-4844-8491-5feffd29e041",
+      "createdAt": "2026-02-10T13:54:41.377Z"
+    }
+  ]
+}
