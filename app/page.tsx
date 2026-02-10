@@ -224,6 +224,25 @@ export default function Home() {
     () => colorFromSeed((sessionState?.viewer?.id ?? "") || viewerName || adminName || "user"),
     [adminName, sessionState?.viewer?.id, viewerName]
   );
+  const entryBadge = (entryId: string) => {
+    const authorId = entryAuthorMap.get(entryId) ?? "";
+    const authorName = participantMap.get(authorId)?.name ?? "";
+    const color = colorFromSeed(authorId || entryId);
+    return (
+      <span
+        className="grid size-6 shrink-0 place-items-center rounded-full border text-[10px] font-semibold"
+        style={{
+          background: color.background,
+          borderColor: color.border,
+          color: color.text
+        }}
+        title={authorName || "Unknown"}
+      >
+        {initialsFromName(authorName)}
+      </span>
+    );
+  };
+
   const canEnterRetro =
     teamName.trim().length > 0 && adminName.trim().length > 0;
   const canJoinSession =
@@ -708,7 +727,7 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto my-12 max-w-[980px] px-7 max-[840px]:my-7">
+    <main className="mx-auto my-12 max-w-[1180px] px-7 max-[840px]:my-7">
       <Dialog
         open={Boolean(pendingGroup)}
         onOpenChange={(open) => {
@@ -1279,25 +1298,12 @@ export default function Home() {
                           event.stopPropagation();
                           handleDropOnItem("right", item.id);
                         }}
-                        className={`relative flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
+                        className={`flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
                           item.kind === "item"
                             ? "cursor-grab active:cursor-grabbing"
                             : ""
                         }`}
                       >
-                        {item.kind === "item" ? (
-                          <span
-                            className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border text-[10px] font-semibold"
-                            style={{
-                              background: colorFromSeed(entryAuthorMap.get(item.id) ?? item.id).background,
-                              borderColor: colorFromSeed(entryAuthorMap.get(item.id) ?? item.id).border,
-                              color: colorFromSeed(entryAuthorMap.get(item.id) ?? item.id).text
-                            }}
-                            title={participantMap.get(entryAuthorMap.get(item.id) ?? "")?.name ?? "Unknown"}
-                          >
-                            {initialsFromName(participantMap.get(entryAuthorMap.get(item.id) ?? "")?.name ?? "")}
-                          </span>
-                        ) : null}
                         {item.kind === "item" ? (
                           <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">
                             {item.text}
@@ -1327,7 +1333,10 @@ export default function Home() {
                                   className="flex cursor-grab items-center justify-between gap-2 rounded-[10px] border border-black/6 bg-white/50 px-2.5 py-1.5 text-[13px] text-[#565b62] active:cursor-grabbing"
                                   title="Drag out to ungroup"
                                 >
-                                  <span>{groupedItem.text}</span>
+                                  <span className="flex min-w-0 flex-1 items-start gap-2">
+                                    {entryBadge(groupedItem.id)}
+                                    <span className="min-w-0 break-words">{groupedItem.text}</span>
+                                  </span>
                                   <button
                                     type="button"
                                     aria-label="Undo from group"
@@ -1359,35 +1368,38 @@ export default function Home() {
                             </ul>
                           </span>
                         )}
-                        <span className="ml-auto inline-flex items-center gap-2">
-                          <span className="min-w-5 text-right text-xs text-[#7a8088]">
-                            {item.votes}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label="Upvote"
-                            aria-pressed={item.voted}
-                            onClick={() => toggleVote("right", item.id)}
-                            className={`h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078] transition ${
-                              item.voted
-                                ? "border-black/12 bg-[#d2d4d8] text-[#4f545a]"
-                                : ""
-                            }`}
-                          >
-                            ↑
-                          </button>
-                          {isAdmin ||
-                          entryAuthorMap.get(item.id) === viewerId ? (
+                        <div className="mt-1 flex w-full items-end justify-between gap-2">
+                          <span>{item.kind === "item" ? entryBadge(item.id) : null}</span>
+                          <span className="inline-flex items-center gap-2">
+                            <span className="min-w-5 text-right text-xs text-[#7a8088]">
+                              {item.votes}
+                            </span>
                             <button
                               type="button"
-                              aria-label="Remove"
-                              onClick={() => removeItem("right", item.id)}
-                              className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
+                              aria-label="Upvote"
+                              aria-pressed={item.voted}
+                              onClick={() => toggleVote("right", item.id)}
+                              className={`h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078] transition ${
+                                item.voted
+                                  ? "border-black/12 bg-[#d2d4d8] text-[#4f545a]"
+                                  : ""
+                              }`}
                             >
-                              ×
+                              ↑
                             </button>
-                          ) : null}
-                        </span>
+                            {isAdmin ||
+                            entryAuthorMap.get(item.id) === viewerId ? (
+                              <button
+                                type="button"
+                                aria-label="Remove"
+                                onClick={() => removeItem("right", item.id)}
+                                className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -1462,25 +1474,12 @@ export default function Home() {
                           event.stopPropagation();
                           handleDropOnItem("wrong", item.id);
                         }}
-                        className={`relative flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
+                        className={`flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
                           item.kind === "item"
                             ? "cursor-grab active:cursor-grabbing"
                             : ""
                         }`}
                       >
-                        {item.kind === "item" ? (
-                          <span
-                            className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border text-[10px] font-semibold"
-                            style={{
-                              background: colorFromSeed(entryAuthorMap.get(item.id) ?? item.id).background,
-                              borderColor: colorFromSeed(entryAuthorMap.get(item.id) ?? item.id).border,
-                              color: colorFromSeed(entryAuthorMap.get(item.id) ?? item.id).text
-                            }}
-                            title={participantMap.get(entryAuthorMap.get(item.id) ?? "")?.name ?? "Unknown"}
-                          >
-                            {initialsFromName(participantMap.get(entryAuthorMap.get(item.id) ?? "")?.name ?? "")}
-                          </span>
-                        ) : null}
                         {item.kind === "item" ? (
                           <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">
                             {item.text}
@@ -1510,7 +1509,10 @@ export default function Home() {
                                   className="flex cursor-grab items-center justify-between gap-2 rounded-[10px] border border-black/6 bg-white/50 px-2.5 py-1.5 text-[13px] text-[#565b62] active:cursor-grabbing"
                                   title="Drag out to ungroup"
                                 >
-                                  <span>{groupedItem.text}</span>
+                                  <span className="flex min-w-0 flex-1 items-start gap-2">
+                                    {entryBadge(groupedItem.id)}
+                                    <span className="min-w-0 break-words">{groupedItem.text}</span>
+                                  </span>
                                   <button
                                     type="button"
                                     aria-label="Undo from group"
@@ -1542,35 +1544,38 @@ export default function Home() {
                             </ul>
                           </span>
                         )}
-                        <span className="ml-auto inline-flex items-center gap-2">
-                          <span className="min-w-5 text-right text-xs text-[#7a8088]">
-                            {item.votes}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label="Upvote"
-                            aria-pressed={item.voted}
-                            onClick={() => toggleVote("wrong", item.id)}
-                            className={`h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078] transition ${
-                              item.voted
-                                ? "border-black/12 bg-[#d2d4d8] text-[#4f545a]"
-                                : ""
-                            }`}
-                          >
-                            ↑
-                          </button>
-                          {isAdmin ||
-                          entryAuthorMap.get(item.id) === viewerId ? (
+                        <div className="mt-1 flex w-full items-end justify-between gap-2">
+                          <span>{item.kind === "item" ? entryBadge(item.id) : null}</span>
+                          <span className="inline-flex items-center gap-2">
+                            <span className="min-w-5 text-right text-xs text-[#7a8088]">
+                              {item.votes}
+                            </span>
                             <button
                               type="button"
-                              aria-label="Remove"
-                              onClick={() => removeItem("wrong", item.id)}
-                              className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
+                              aria-label="Upvote"
+                              aria-pressed={item.voted}
+                              onClick={() => toggleVote("wrong", item.id)}
+                              className={`h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078] transition ${
+                                item.voted
+                                  ? "border-black/12 bg-[#d2d4d8] text-[#4f545a]"
+                                  : ""
+                              }`}
                             >
-                              ×
+                              ↑
                             </button>
-                          ) : null}
-                        </span>
+                            {isAdmin ||
+                            entryAuthorMap.get(item.id) === viewerId ? (
+                              <button
+                                type="button"
+                                aria-label="Remove"
+                                onClick={() => removeItem("wrong", item.id)}
+                                className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
