@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -130,6 +130,7 @@ function toRetroItems(
 }
 
 export default function Home() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const inviteSlugFromUrl = parseSessionCode(searchParams.get("join") ?? "");
   const [isSetupComplete, setIsSetupComplete] = useState(false);
@@ -211,6 +212,16 @@ export default function Home() {
         (sessionState?.entries ?? []).map((entry) => [
           entry.id,
           entry.authorParticipantId,
+        ]),
+      ),
+    [sessionState],
+  );
+  const sessionEntryMap = useMemo(
+    () =>
+      new Map(
+        (sessionState?.entries ?? []).map((entry) => [
+          entry.id,
+          entry
         ]),
       ),
     [sessionState],
@@ -340,7 +351,8 @@ export default function Home() {
     setHappinessMode(false);
     setHappinessSubmitted(false);
     setIsSetupComplete(false);
-  }, [sessionSlug]);
+    router.replace("/");
+  }, [router, sessionSlug]);
 
   const endSession = useCallback(async () => {
     if (!isAdmin || !sessionSlug || !participantToken) return;
@@ -498,6 +510,26 @@ export default function Home() {
     const target = source.find((item) => item.id === id);
     if (!target) return;
 
+    if (target.kind === "group") {
+      const groupedIds = target.items.map((item) => item.id);
+      const votedEntryId = groupedIds.find((entryId) => sessionEntryMap.get(entryId)?.votedByViewer);
+      const voteTargetId = votedEntryId ?? groupedIds[0];
+      if (!voteTargetId) return;
+
+      const method = votedEntryId ? "DELETE" : "POST";
+      const path = votedEntryId
+        ? `/api/sessions/${sessionSlug}/votes/${voteTargetId}`
+        : `/api/sessions/${sessionSlug}/votes`;
+      const body = votedEntryId ? undefined : JSON.stringify({ entryId: voteTargetId });
+
+      apiRequest(path, { method, body }).catch((error: unknown) => {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to update vote",
+        );
+      });
+      return;
+    }
+
     const method = target.voted ? "DELETE" : "POST";
     const path = target.voted
       ? `/api/sessions/${sessionSlug}/votes/${id}`
@@ -511,7 +543,35 @@ export default function Home() {
     });
   };
 
-  const removeItem = (_side: Side, id: string) => {
+  const removeItem = (side: Side, id: string) => {
+    const source = side === "right" ? wentRightItems : wentWrongItems;
+    const target = source.find((item) => item.id === id);
+    if (!target) return;
+
+    if (target.kind === "group") {
+      const ungroupRequests = target.items.map((item) =>
+        fetch(`/api/sessions/${sessionSlug}/groups/${target.id}/entries/${item.id}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "x-participant-token": participantToken
+          }
+        }).then(async (response) => {
+          if (!response.ok) {
+            const payload = (await response.json()) as ApiError;
+            throw new Error(payload.error ?? "Unable to ungroup");
+          }
+        })
+      );
+
+      Promise.all(ungroupRequests)
+        .then(() => loadSessionState(sessionSlug, participantToken))
+        .catch((error: unknown) => {
+          setApiError(error instanceof Error ? error.message : "Unable to ungroup items");
+        });
+      return;
+    }
+
     const authorId = entryAuthorMap.get(id);
     if (!authorId) return;
     const canDelete = isAdmin || authorId === viewerId;
@@ -1587,14 +1647,11 @@ export default function Home() {
               <section className="relative overflow-hidden rounded-2xl border border-black/6 bg-[#eeeeef] p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-['']">
                 <div className="relative z-10">
                   <h3 className="m-0 text-base font-medium text-[#565b62]">
-                    People online
+                    Joinees List
                   </h3>
-                  <p className="mt-2 text-sm text-[#7a8088]">
-                    {sessionState?.participants.length ?? 0} available
-                  </p>
                   <ul
-                    aria-label="People online"
-                    className="mt-[14px] flex list-none flex-col gap-2.5 p-0"
+                    aria-label="Joinees list"
+                    className="mt-3 flex list-none flex-col gap-2.5 p-0"
                   >
                     {(sessionState?.participants ?? []).map((person) => (
                       <li

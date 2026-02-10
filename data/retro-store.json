@@ -86,9 +86,18 @@
       "slug": "justfoxfix-bnc592",
       "title": "JustFoxFix",
       "createdByParticipantId": "27a473d1-cd0c-47f5-b842-4ec766365f6c",
-      "phase": "collecting",
+      "phase": "finished",
       "createdAt": "2026-02-10T14:51:58.290Z",
-      "updatedAt": "2026-02-10T15:04:45.701Z"
+      "updatedAt": "2026-02-10T15:05:22.475Z"
+    },
+    {
+      "id": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "slug": "justfoxfix-6wujcm",
+      "title": "JustFoxFix",
+      "createdByParticipantId": "dd3164b6-88ff-4de1-94af-797fa15323d9",
+      "phase": "finished",
+      "createdAt": "2026-02-10T15:05:25.454Z",
+      "updatedAt": "2026-02-10T15:11:01.963Z"
     }
   ],
   "participants": [
@@ -224,6 +233,20 @@
       "name": "John Wilson",
       "isAdmin": false,
       "createdAt": "2026-02-10T14:52:50.745Z"
+    },
+    {
+      "id": "dd3164b6-88ff-4de1-94af-797fa15323d9",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T15:05:25.454Z"
+    },
+    {
+      "id": "0463f0ad-1c53-428d-bb77-1cbbd69c2894",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "name": "Conor Shand",
+      "isAdmin": false,
+      "createdAt": "2026-02-10T15:05:45.333Z"
     }
   ],
   "entries": [
@@ -361,6 +384,33 @@
       "content": "Let me test a very long list of worded sentence to test how the long worded sentence is going to show up from design perspective",
       "groupId": "972fb039-1253-484a-b11c-21cae8d1e104",
       "createdAt": "2026-02-10T14:54:56.452Z"
+    },
+    {
+      "id": "3626aa36-2ca2-4719-a0b2-82cf7c32f2cf",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "authorParticipantId": "dd3164b6-88ff-4de1-94af-797fa15323d9",
+      "type": "went_right",
+      "content": "Hello there",
+      "groupId": null,
+      "createdAt": "2026-02-10T15:05:51.801Z"
+    },
+    {
+      "id": "a52f1bbd-b47e-4dd9-9ad7-340d013166ed",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "authorParticipantId": "dd3164b6-88ff-4de1-94af-797fa15323d9",
+      "type": "went_right",
+      "content": "Lets group this thing",
+      "groupId": null,
+      "createdAt": "2026-02-10T15:05:56.007Z"
+    },
+    {
+      "id": "5bf55a60-d905-44d3-a80a-76977403351d",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "authorParticipantId": "0463f0ad-1c53-428d-bb77-1cbbd69c2894",
+      "type": "went_right",
+      "content": "Can I delete my own entry ?",
+      "groupId": null,
+      "createdAt": "2026-02-10T15:09:36.947Z"
     }
   ],
   "groups": [
@@ -451,6 +501,22 @@
       "participantId": "8bad3175-888d-4f72-a1a7-cae40ce785ee",
       "value": 1,
       "createdAt": "2026-02-10T14:46:40.770Z"
+    },
+    {
+      "id": "3ae21416-d1e0-4fac-8ff7-1c6b51bb0ea8",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "entryId": "3626aa36-2ca2-4719-a0b2-82cf7c32f2cf",
+      "participantId": "dd3164b6-88ff-4de1-94af-797fa15323d9",
+      "value": 1,
+      "createdAt": "2026-02-10T15:08:23.239Z"
+    },
+    {
+      "id": "f5a1041e-a552-477c-a3ab-5005f3d01d3c",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "entryId": "3626aa36-2ca2-4719-a0b2-82cf7c32f2cf",
+      "participantId": "0463f0ad-1c53-428d-bb77-1cbbd69c2894",
+      "value": 1,
+      "createdAt": "2026-02-10T15:08:27.025Z"
     }
   ],
   "happinessChecks": [
@@ -517,6 +583,22 @@
       "score": 7,
       "createdAt": "2026-02-10T14:48:06.410Z",
       "updatedAt": "2026-02-10T14:48:06.410Z"
+    },
+    {
+      "id": "03efae35-36c9-423e-a762-7341db17f70b",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "participantId": "0463f0ad-1c53-428d-bb77-1cbbd69c2894",
+      "score": 7,
+      "createdAt": "2026-02-10T15:10:50.857Z",
+      "updatedAt": "2026-02-10T15:10:50.857Z"
+    },
+    {
+      "id": "01967e9b-f406-4712-ba00-91d1d4a12621",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "participantId": "dd3164b6-88ff-4de1-94af-797fa15323d9",
+      "score": 8,
+      "createdAt": "2026-02-10T15:10:54.148Z",
+      "updatedAt": "2026-02-10T15:10:54.148Z"
     }
   ],
   "navigation": [
@@ -576,9 +658,15 @@
     },
     {
       "sessionId": "a585a829-5382-46be-b540-bd583f8e95fb",
-      "activeSection": "retro",
+      "activeSection": "done",
       "discussionEntryId": null,
-      "updatedAt": "2026-02-10T14:51:58.290Z"
+      "updatedAt": "2026-02-10T15:05:22.475Z"
+    },
+    {
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T15:11:01.963Z"
     }
   ],
   "authTokens": [
@@ -695,6 +783,18 @@
       "participantId": "ccd6e209-d5db-412a-9c50-2d0f3ce3c677",
       "sessionId": "a585a829-5382-46be-b540-bd583f8e95fb",
       "createdAt": "2026-02-10T14:52:50.745Z"
+    },
+    {
+      "token": "b5daca03-7aff-4582-b903-51d98ad38f62",
+      "participantId": "dd3164b6-88ff-4de1-94af-797fa15323d9",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "createdAt": "2026-02-10T15:05:25.454Z"
+    },
+    {
+      "token": "e6427523-452d-46a3-b6f2-70eca72555c9",
+      "participantId": "0463f0ad-1c53-428d-bb77-1cbbd69c2894",
+      "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
+      "createdAt": "2026-02-10T15:05:45.333Z"
     }
   ]
 }
