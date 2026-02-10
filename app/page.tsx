@@ -20,6 +20,8 @@ import {
   type Side,
 } from "@/lib/discussion";
 import type { SessionStateResponse } from "@/lib/backend/types";
+import { RetroColumn } from "@/components/retro/retro-column";
+import { colorFromSeed, initialsFromName, parseSessionCode, toRetroItems } from "@/lib/retro/utils";
 
 type DragState = {
   sourceSide: Side;
@@ -43,91 +45,8 @@ type PendingGroup = {
 
 type ApiError = { error?: string };
 
-type SessionEntry = SessionStateResponse["entries"][number];
-
 const ACTIVE_SLUG_KEY = "retro.activeSlug";
 const tokenKey = (slug: string) => `retro.token.${slug}`;
-
-function parseSessionCode(input: string): string {
-  const value = input.trim();
-  if (!value) return "";
-
-  try {
-    const url = new URL(value);
-    const parts = url.pathname.split("/").filter(Boolean);
-    const sessionIndex = parts.findIndex((part) => part === "session");
-    if (sessionIndex >= 0 && parts[sessionIndex + 1]) {
-      return parts[sessionIndex + 1].toLowerCase();
-    }
-  } catch {
-    // Not a URL; continue with raw value.
-  }
-
-  return value.toLowerCase();
-}
-
-function initialsFromName(name: string): string {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (parts.length === 0) return "--";
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
-  return `${first}${last}`.toUpperCase();
-}
-
-function colorFromSeed(seed: string): { background: string; border: string; text: string } {
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
-  }
-  const hue = hash % 360;
-  return {
-    background: `hsl(${hue} 70% 92%)`,
-    border: `hsl(${hue} 55% 78%)`,
-    text: `hsl(${hue} 42% 28%)`
-  };
-}
-
-function toRetroItems(
-  entries: SessionEntry[],
-  groups: SessionStateResponse["groups"],
-  type: SessionEntry["type"],
-): RetroEntry[] {
-  const byType = entries.filter((entry) => entry.type === type);
-  const groupedIds = new Set<string>();
-
-  const groupEntries: RetroEntry[] = groups
-    .filter((group) => group.type === type)
-    .map((group) => {
-      const items = byType.filter((entry) => entry.groupId === group.id);
-      items.forEach((entry) => groupedIds.add(entry.id));
-      return {
-        kind: "group" as const,
-        id: group.id,
-        name: group.name,
-        items: items.map((entry) => ({ id: entry.id, text: entry.content })),
-        votes: items.reduce((sum, entry) => sum + entry.votes, 0),
-        voted: items.some((entry) => entry.votedByViewer),
-        ts: Date.parse(group.createdAt)
-      };
-    })
-    .filter((group) => group.items.length >= 2);
-
-  const standalone: RetroEntry[] = byType
-    .filter((entry) => !groupedIds.has(entry.id))
-    .map((entry) => ({
-      kind: "item" as const,
-      id: entry.id,
-      text: entry.content,
-      votes: entry.votes,
-      voted: entry.votedByViewer,
-      ts: Date.parse(entry.createdAt)
-    }));
-
-  return [...standalone, ...groupEntries];
-}
 
 export default function Home() {
   const router = useRouter();
@@ -1289,357 +1208,59 @@ export default function Home() {
               </section>
             ) : (
               <>
-                <section
-                  className="relative min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:min-h-[200px]"
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    handleDropOnPanel("right");
+                <RetroColumn
+                  side="right"
+                  title="What went right"
+                  inputValue={wentRightInput}
+                  onInputChange={setWentRightInput}
+                  onAdd={addWentRight}
+                  items={sortedRight}
+                  onDropPanel={handleDropOnPanel}
+                  onDropItem={handleDropOnItem}
+                  onDragStartEntry={(side, id, dataTransfer) => {
+                    dataTransfer.setData("text/plain", id);
+                    dataTransfer.effectAllowed = "move";
+                    setDragging({ sourceSide: side, kind: "entry-item", id });
                   }}
-                >
-                  <h2 className="m-0 text-lg font-medium text-[#51555b]">
-                    What went right
-                  </h2>
-                  <div className="mt-[14px]">
-                    <div className="relative">
-                      <input
-                        className="block h-[42px] w-full rounded-[10px] border border-black/6 bg-white/45 px-3 pr-11 text-[#565b62] placeholder:text-[#9aa0a6]"
-                        type="text"
-                        placeholder="Type and press enter"
-                        value={wentRightInput}
-                        onChange={(event) =>
-                          setWentRightInput(event.target.value)
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            addWentRight();
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        aria-label="Add"
-                        onClick={addWentRight}
-                        className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center rounded-[10px] border border-black/6 bg-white/55 text-[#6a7078] active:translate-y-[calc(-50%+1px)]"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          aria-hidden
-                          className="size-4 fill-none stroke-current stroke-[2.2]"
-                        >
-                          <path d="M12 5v14" />
-                          <path d="M5 12h14" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <ul
-                    className="mt-[14px] flex list-none flex-col gap-2.5 p-0"
-                    aria-label="What went right list"
-                  >
-                    {sortedRight.map((item) => (
-                      <li
-                        key={item.id}
-                        draggable={item.kind === "item"}
-                        onDragStart={(event) => {
-                          event.dataTransfer.setData("text/plain", item.id);
-                          event.dataTransfer.effectAllowed = "move";
-                          setDragging({
-                            sourceSide: "right",
-                            kind: "entry-item",
-                            id: item.id,
-                          });
-                        }}
-                        onDragEnd={() => setDragging(null)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleDropOnItem("right", item.id);
-                        }}
-                        className={`flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
-                          item.kind === "item"
-                            ? "cursor-grab active:cursor-grabbing"
-                            : ""
-                        }`}
-                      >
-                        {item.kind === "item" ? (
-                          <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">
-                            {item.text}
-                          </span>
-                        ) : (
-                          <span className="min-w-full flex-1 pr-1.5 leading-[1.35]">
-                            <strong className="mb-1 block">{item.name}</strong>
-                            <ul className="space-y-1.5 pl-0">
-                              {item.items.map((groupedItem) => (
-                                <li
-                                  key={groupedItem.id}
-                                  draggable
-                                  onDragStart={(event) => {
-                                    event.dataTransfer.setData(
-                                      "text/plain",
-                                      groupedItem.id,
-                                    );
-                                    event.dataTransfer.effectAllowed = "move";
-                                    setDragging({
-                                      sourceSide: "right",
-                                      kind: "grouped-item",
-                                      groupId: item.id,
-                                      itemId: groupedItem.id,
-                                    });
-                                  }}
-                                  onDragEnd={() => setDragging(null)}
-                                  className="flex cursor-grab items-center justify-between gap-2 rounded-[10px] border border-black/6 bg-white/50 px-2.5 py-1.5 text-[13px] text-[#565b62] active:cursor-grabbing"
-                                  title="Drag out to ungroup"
-                                >
-                                  <span className="flex min-w-0 flex-1 items-start gap-2">
-                                    {entryBadge(groupedItem.id)}
-                                    <span className="min-w-0 break-words">{groupedItem.text}</span>
-                                  </span>
-                                  <button
-                                    type="button"
-                                    aria-label="Undo from group"
-                                    title="Undo from group"
-                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-black/6 bg-white/65 text-[#6a7078]"
-                                    onMouseDown={(event) =>
-                                      event.stopPropagation()
-                                    }
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      undoGroupedItem(
-                                        "right",
-                                        item.id,
-                                        groupedItem.id,
-                                      );
-                                    }}
-                                  >
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      aria-hidden
-                                      className="size-4 fill-none stroke-current stroke-[2]"
-                                    >
-                                      <path d="M9 7 5 11l4 4" />
-                                      <path d="M5 11h7a5 5 0 1 1 0 10h-3" />
-                                    </svg>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </span>
-                        )}
-                        <div className="mt-1 flex w-full items-end justify-between gap-2">
-                          <span>{item.kind === "item" ? entryBadge(item.id) : null}</span>
-                          <span className="inline-flex items-center gap-2">
-                            <span className="min-w-5 text-right text-xs text-[#7a8088]">
-                              {item.votes}
-                            </span>
-                            <button
-                              type="button"
-                              aria-label="Upvote"
-                              aria-pressed={item.voted}
-                              onClick={() => toggleVote("right", item.id)}
-                              className={`h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078] transition ${
-                                item.voted
-                                  ? "border-black/12 bg-[#d2d4d8] text-[#4f545a]"
-                                  : ""
-                              }`}
-                            >
-                              ↑
-                            </button>
-                            {isAdmin ||
-                            entryAuthorMap.get(item.id) === viewerId ? (
-                              <button
-                                type="button"
-                                aria-label="Remove"
-                                onClick={() => removeItem("right", item.id)}
-                                className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
-                              >
-                                ×
-                              </button>
-                            ) : null}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                  onDragStartGrouped={(side, groupId, itemId, dataTransfer) => {
+                    dataTransfer.setData("text/plain", itemId);
+                    dataTransfer.effectAllowed = "move";
+                    setDragging({ sourceSide: side, kind: "grouped-item", groupId, itemId });
+                  }}
+                  onDragEnd={() => setDragging(null)}
+                  onToggleVote={toggleVote}
+                  onRemove={removeItem}
+                  canRemove={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
+                  onUndoGroupedItem={undoGroupedItem}
+                  renderEntryBadge={entryBadge}
+                />
 
-                <section
-                  className="relative min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:min-h-[200px]"
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    handleDropOnPanel("wrong");
+                <RetroColumn
+                  side="wrong"
+                  title="What went wrong"
+                  inputValue={wentWrongInput}
+                  onInputChange={setWentWrongInput}
+                  onAdd={addWentWrong}
+                  items={sortedWrong}
+                  onDropPanel={handleDropOnPanel}
+                  onDropItem={handleDropOnItem}
+                  onDragStartEntry={(side, id, dataTransfer) => {
+                    dataTransfer.setData("text/plain", id);
+                    dataTransfer.effectAllowed = "move";
+                    setDragging({ sourceSide: side, kind: "entry-item", id });
                   }}
-                >
-                  <h2 className="m-0 text-lg font-medium text-[#51555b]">
-                    What went wrong
-                  </h2>
-                  <div className="mt-[14px]">
-                    <div className="relative">
-                      <input
-                        className="block h-[42px] w-full rounded-[10px] border border-black/6 bg-white/45 px-3 pr-11 text-[#565b62] placeholder:text-[#9aa0a6]"
-                        type="text"
-                        placeholder="Type and press enter"
-                        value={wentWrongInput}
-                        onChange={(event) =>
-                          setWentWrongInput(event.target.value)
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            addWentWrong();
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        aria-label="Add"
-                        onClick={addWentWrong}
-                        className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center rounded-[10px] border border-black/6 bg-white/55 text-[#6a7078] active:translate-y-[calc(-50%+1px)]"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          aria-hidden
-                          className="size-4 fill-none stroke-current stroke-[2.2]"
-                        >
-                          <path d="M12 5v14" />
-                          <path d="M5 12h14" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <ul
-                    className="mt-[14px] flex list-none flex-col gap-2.5 p-0"
-                    aria-label="What went wrong list"
-                  >
-                    {sortedWrong.map((item) => (
-                      <li
-                        key={item.id}
-                        draggable={item.kind === "item"}
-                        onDragStart={(event) => {
-                          event.dataTransfer.setData("text/plain", item.id);
-                          event.dataTransfer.effectAllowed = "move";
-                          setDragging({
-                            sourceSide: "wrong",
-                            kind: "entry-item",
-                            id: item.id,
-                          });
-                        }}
-                        onDragEnd={() => setDragging(null)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleDropOnItem("wrong", item.id);
-                        }}
-                        className={`flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
-                          item.kind === "item"
-                            ? "cursor-grab active:cursor-grabbing"
-                            : ""
-                        }`}
-                      >
-                        {item.kind === "item" ? (
-                          <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">
-                            {item.text}
-                          </span>
-                        ) : (
-                          <span className="min-w-full flex-1 pr-1.5 leading-[1.35]">
-                            <strong className="mb-1 block">{item.name}</strong>
-                            <ul className="space-y-1.5 pl-0">
-                              {item.items.map((groupedItem) => (
-                                <li
-                                  key={groupedItem.id}
-                                  draggable
-                                  onDragStart={(event) => {
-                                    event.dataTransfer.setData(
-                                      "text/plain",
-                                      groupedItem.id,
-                                    );
-                                    event.dataTransfer.effectAllowed = "move";
-                                    setDragging({
-                                      sourceSide: "wrong",
-                                      kind: "grouped-item",
-                                      groupId: item.id,
-                                      itemId: groupedItem.id,
-                                    });
-                                  }}
-                                  onDragEnd={() => setDragging(null)}
-                                  className="flex cursor-grab items-center justify-between gap-2 rounded-[10px] border border-black/6 bg-white/50 px-2.5 py-1.5 text-[13px] text-[#565b62] active:cursor-grabbing"
-                                  title="Drag out to ungroup"
-                                >
-                                  <span className="flex min-w-0 flex-1 items-start gap-2">
-                                    {entryBadge(groupedItem.id)}
-                                    <span className="min-w-0 break-words">{groupedItem.text}</span>
-                                  </span>
-                                  <button
-                                    type="button"
-                                    aria-label="Undo from group"
-                                    title="Undo from group"
-                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-black/6 bg-white/65 text-[#6a7078]"
-                                    onMouseDown={(event) =>
-                                      event.stopPropagation()
-                                    }
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      undoGroupedItem(
-                                        "wrong",
-                                        item.id,
-                                        groupedItem.id,
-                                      );
-                                    }}
-                                  >
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      aria-hidden
-                                      className="size-4 fill-none stroke-current stroke-[2]"
-                                    >
-                                      <path d="M9 7 5 11l4 4" />
-                                      <path d="M5 11h7a5 5 0 1 1 0 10h-3" />
-                                    </svg>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </span>
-                        )}
-                        <div className="mt-1 flex w-full items-end justify-between gap-2">
-                          <span>{item.kind === "item" ? entryBadge(item.id) : null}</span>
-                          <span className="inline-flex items-center gap-2">
-                            <span className="min-w-5 text-right text-xs text-[#7a8088]">
-                              {item.votes}
-                            </span>
-                            <button
-                              type="button"
-                              aria-label="Upvote"
-                              aria-pressed={item.voted}
-                              onClick={() => toggleVote("wrong", item.id)}
-                              className={`h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078] transition ${
-                                item.voted
-                                  ? "border-black/12 bg-[#d2d4d8] text-[#4f545a]"
-                                  : ""
-                              }`}
-                            >
-                              ↑
-                            </button>
-                            {isAdmin ||
-                            entryAuthorMap.get(item.id) === viewerId ? (
-                              <button
-                                type="button"
-                                aria-label="Remove"
-                                onClick={() => removeItem("wrong", item.id)}
-                                className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
-                              >
-                                ×
-                              </button>
-                            ) : null}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                  onDragStartGrouped={(side, groupId, itemId, dataTransfer) => {
+                    dataTransfer.setData("text/plain", itemId);
+                    dataTransfer.effectAllowed = "move";
+                    setDragging({ sourceSide: side, kind: "grouped-item", groupId, itemId });
+                  }}
+                  onDragEnd={() => setDragging(null)}
+                  onToggleVote={toggleVote}
+                  onRemove={removeItem}
+                  canRemove={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
+                  onUndoGroupedItem={undoGroupedItem}
+                  renderEntryBadge={entryBadge}
+                />
               </>
             )}
 

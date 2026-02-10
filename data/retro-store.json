@@ -98,6 +98,15 @@
       "phase": "finished",
       "createdAt": "2026-02-10T15:05:25.454Z",
       "updatedAt": "2026-02-10T15:11:01.963Z"
+    },
+    {
+      "id": "45c30c41-00f7-4252-be98-661bf95695f5",
+      "slug": "justforfix-hqrg2u",
+      "title": "JustForFix",
+      "createdByParticipantId": "ee5f26a0-c2c0-4380-9442-5ae49f2789d4",
+      "phase": "finished",
+      "createdAt": "2026-02-10T15:20:35.300Z",
+      "updatedAt": "2026-02-10T15:20:43.042Z"
     }
   ],
   "participants": [
@@ -247,6 +256,13 @@
       "name": "Conor Shand",
       "isAdmin": false,
       "createdAt": "2026-02-10T15:05:45.333Z"
+    },
+    {
+      "id": "ee5f26a0-c2c0-4380-9442-5ae49f2789d4",
+      "sessionId": "45c30c41-00f7-4252-be98-661bf95695f5",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T15:20:35.300Z"
     }
   ],
   "entries": [
@@ -667,6 +683,12 @@
       "activeSection": "done",
       "discussionEntryId": null,
       "updatedAt": "2026-02-10T15:11:01.963Z"
+    },
+    {
+      "sessionId": "45c30c41-00f7-4252-be98-661bf95695f5",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T15:20:43.042Z"
     }
   ],
   "authTokens": [
@@ -795,6 +817,12 @@
       "participantId": "0463f0ad-1c53-428d-bb77-1cbbd69c2894",
       "sessionId": "69570619-e946-4834-b835-3a1ebbf6aa81",
       "createdAt": "2026-02-10T15:05:45.333Z"
+    },
+    {
+      "token": "e5424a7d-db96-4dec-8958-587cc042d5a1",
+      "participantId": "ee5f26a0-c2c0-4380-9442-5ae49f2789d4",
+      "sessionId": "45c30c41-00f7-4252-be98-661bf95695f5",
+      "createdAt": "2026-02-10T15:20:35.300Z"
     }
   ]
 }
