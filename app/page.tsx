@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -102,6 +103,9 @@ const seededWrong: RetroEntry[] = [
 ];
 
 export default function Home() {
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [teamName, setTeamName] = useState("");
+  const [adminName, setAdminName] = useState("");
   const [wentRightInput, setWentRightInput] = useState("");
   const [wentWrongInput, setWentWrongInput] = useState("");
   const [wentRightItems, setWentRightItems] = useState<RetroEntry[]>(seededRight);
@@ -115,6 +119,7 @@ export default function Home() {
   const [happinessMode, setHappinessMode] = useState(false);
   const [happinessScore, setHappinessScore] = useState(7);
   const [happinessSubmitted, setHappinessSubmitted] = useState(false);
+  const sessionId = "SES-7K2P9M";
 
   const currentStage = !discussionMode
     ? "retro"
@@ -136,6 +141,17 @@ export default function Home() {
   const sortedWrong = useMemo(() => sortEntries(wentWrongItems), [wentWrongItems]);
   const hasDiscussionItems = wentRightItems.length + wentWrongItems.length > 0;
   const currentDiscussion = discussionQueue[discussionIndex];
+  const adminInitials = useMemo(() => {
+    const parts = adminName
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (parts.length === 0) return "--";
+    const first = parts[0]?.[0] ?? "";
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+    return `${first}${last}`.toUpperCase();
+  }, [adminName]);
+  const canEnterRetro = teamName.trim().length > 0 && adminName.trim().length > 0;
   const happinessMood =
     happinessScore <= 2
       ? { emoji: "😞", label: "Very low" }
@@ -463,54 +479,140 @@ export default function Home() {
       </Dialog>
 
       <header className="mb-7 flex items-center justify-between text-sm text-[#6f757d]">
-        <div className="flex items-center gap-2">
-          {stageOrder.map((stage, index) => {
-            const isCurrent = index === currentStageIndex;
-            const isDone = index < currentStageIndex;
-            const isBlocked = index > currentStageIndex;
+        {isSetupComplete ? (
+          <div className="flex items-center gap-2">
+            {stageOrder.map((stage, index) => {
+              const isCurrent = index === currentStageIndex;
+              const isDone = index < currentStageIndex;
+              const isBlocked = index > currentStageIndex;
 
-            return (
-              <div key={stage} className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full border px-3 py-2 text-xs ${
-                    isCurrent
-                      ? "border-black/10 bg-white/55 text-[#4f545a]"
-                      : isDone
-                        ? "border-black/8 bg-white/35 text-[#6a7078]"
-                        : "border-black/6 bg-white/20 text-[#9aa0a6]"
-                  }`}
-                >
-                  {stageLabel[stage]}
-                </span>
-                {index < stageOrder.length - 1 ? <span className="text-[#9aa0a6]">›</span> : null}
-              </div>
-            );
-          })}
+              return (
+                <div key={stage} className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-2 text-xs ${
+                      isCurrent
+                        ? "border-black/10 bg-white/55 text-[#4f545a]"
+                        : isDone
+                          ? "border-black/8 bg-white/35 text-[#6a7078]"
+                          : "border-black/6 bg-white/20 text-[#9aa0a6]"
+                    }`}
+                  >
+                    {stageLabel[stage]}
+                  </span>
+                  {index < stageOrder.length - 1 ? <span className="text-[#9aa0a6]">›</span> : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white/35 px-3 py-2 text-xs text-[#5f656d] before:size-1.5 before:rounded-full before:bg-[#c9ccd1] before:content-['']">
+              Session Launchpad
+            </span>
+            <span className="text-xs text-[#8b9096]">Create your retrospective room</span>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="grid size-[34px] place-items-center rounded-full border border-black/6 bg-gradient-to-b from-[#f7f7f8] to-[#dedfe2] text-[11px] font-medium text-[#565b62] shadow-[0_10px_22px_rgba(0,0,0,0.07)]">
+            {adminInitials}
+          </span>
         </div>
-        <span
-          aria-hidden
-          className="size-[34px] rounded-full border border-black/6 bg-gradient-to-b from-[#f7f7f8] to-[#dedfe2] shadow-[0_10px_22px_rgba(0,0,0,0.07)]"
-        />
       </header>
 
-      <section className="my-[14px] mb-[26px]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-[#3a3d41]">Team Retrospective</h1>
-          {!discussionMode ? (
-            <Button type="button" onClick={startDiscussion} disabled={!hasDiscussionItems}>
-              Start Discussion
-            </Button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => setDiscussionMode(false)}>
-                Back To Board
-              </Button>
-            </div>
-          )}
-        </div>
-      </section>
+      {!isSetupComplete ? (
+        <section className="my-[14px] mb-[26px]">
+          <div className="relative overflow-hidden rounded-[20px] border border-black/6 bg-[#eeeeef] p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_10%_15%,rgba(255,255,255,0.7),rgba(255,255,255,0)_46%),radial-gradient(circle_at_90%_90%,rgba(255,255,255,0.5),rgba(255,255,255,0)_45%)] before:content-['']">
+            <div className="relative z-10 grid grid-cols-[1.45fr_1fr] gap-6 max-[840px]:grid-cols-1">
+              <section>
+                <p className="text-xs tracking-[0.2em] text-[#7a8088] uppercase">Welcome</p>
+                <h1 className="mt-2 text-[38px] leading-[1.05] font-medium text-[#3a3d41]">Open a New Retro Room</h1>
+                <p className="mt-3 max-w-[45ch] text-sm text-[#6f757d]">
+                  Give your session a team identity and assign the facilitator before the board unlocks.
+                </p>
 
-      <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
+                <div className="mt-6 grid gap-3">
+                  <div>
+                    <label htmlFor="team-name" className="mb-1 block text-sm text-[#565b62]">
+                      Team Name
+                    </label>
+                    <input
+                      id="team-name"
+                      className="block h-[44px] w-full rounded-[12px] border border-black/6 bg-white/50 px-3 text-[#565b62] placeholder:text-[#9aa0a6]"
+                      type="text"
+                      placeholder="e.g. Product Engineering"
+                      value={teamName}
+                      onChange={(event) => setTeamName(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="admin-name" className="mb-1 block text-sm text-[#565b62]">
+                      Facilitator Name
+                    </label>
+                    <input
+                      id="admin-name"
+                      className="block h-[44px] w-full rounded-[12px] border border-black/6 bg-white/50 px-3 text-[#565b62] placeholder:text-[#9aa0a6]"
+                      type="text"
+                      placeholder="e.g. Alex Johnson"
+                      value={adminName}
+                      onChange={(event) => setAdminName(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (!canEnterRetro) return;
+                      setIsSetupComplete(true);
+                    }}
+                    disabled={!canEnterRetro}
+                  >
+                    Launch Retrospective
+                  </Button>
+                </div>
+              </section>
+
+              <section className="rounded-[16px] border border-black/6 bg-white/35 p-5">
+                <h3 className="m-0 text-base font-medium text-[#565b62]">Live Session Card</h3>
+                <div className="mt-4 rounded-[14px] border border-black/6 bg-white/45 p-4">
+                  <p className="text-xs text-[#7a8088]">Team</p>
+                  <p className="mt-1 text-base text-[#4f545a]">{teamName.trim() || "Waiting for name..."}</p>
+                  <p className="mt-3 text-xs text-[#7a8088]">Facilitator</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="grid size-7 place-items-center rounded-full border border-black/8 bg-white/60 text-[10px] font-medium text-[#565b62]">
+                      {adminInitials}
+                    </span>
+                    <span className="text-sm text-[#4f545a]">{adminName.trim() || "Waiting for name..."}</span>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-[12px] border border-black/6 bg-white/35 px-3 py-2 text-xs text-[#7a8088]">
+                  Session ID will be shareable once backend integration is added.
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <>
+          <section className="my-[14px] mb-[26px]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-[#3a3d41]">{teamName.trim()} Retrospective</h1>
+              {!discussionMode ? (
+                <Button type="button" onClick={startDiscussion} disabled={!hasDiscussionItems}>
+                  Start Discussion
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDiscussionMode(false)}>
+                    Back To Board
+                  </Button>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
         {discussionMode ? (
           <section className="relative col-span-2 min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:col-span-1 max-[840px]:min-h-[200px]">
             <div className="relative z-10 min-h-[320px]">
@@ -880,6 +982,22 @@ export default function Home() {
         <aside className="flex flex-col gap-4">
           <section className="relative overflow-hidden rounded-2xl border border-black/6 bg-[#eeeeef] p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-['']">
             <div className="relative z-10">
+              <h3 className="m-0 text-base font-medium text-[#565b62]">Session</h3>
+              <div className="mt-3 flex items-center justify-between rounded-[14px] border border-black/6 bg-white/28 px-3 py-3">
+                <span className="text-sm text-[#4f545a]">{sessionId}</span>
+                <button
+                  type="button"
+                  className="grid size-7 place-items-center rounded-[10px] border border-black/8 bg-white/55 text-[#6a7078]"
+                  aria-label="Share session"
+                  title="Share session"
+                >
+                  <Share2 className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          </section>
+          <section className="relative overflow-hidden rounded-2xl border border-black/6 bg-[#eeeeef] p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-['']">
+            <div className="relative z-10">
               <h3 className="m-0 text-base font-medium text-[#565b62]">People online</h3>
               <p className="mt-2 text-sm text-[#7a8088]">8 available</p>
               <ul aria-label="People online" className="mt-[14px] flex list-none flex-col gap-2.5 p-0">
@@ -901,7 +1019,9 @@ export default function Home() {
             </div>
           </section>
         </aside>
-      </section>
+          </section>
+        </>
+      )}
     </main>
   );
 }
