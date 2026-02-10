@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Moon, Share2, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,7 @@ const THEME_KEY = "retro.theme";
 // - polls shared state,
 // - dispatches backend mutations,
 // - renders setup, board, discussion, and happiness flows.
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteSlugFromUrl = parseSessionCode(searchParams.get("join") ?? "");
@@ -1245,5 +1245,13 @@ export default function Home() {
         </>
       )}
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
