@@ -22,6 +22,29 @@ import {
 import type { SessionStateResponse } from "@/lib/backend/types";
 import { RetroColumn } from "@/components/retro/retro-column";
 import { colorFromSeed, initialsFromName, parseSessionCode, toRetroItems } from "@/lib/retro/utils";
+import {
+  addEntryToGroup,
+  createEntry,
+  createGroup,
+  createSession,
+  deleteEntry,
+  getSessionState,
+  joinSession,
+  moveEntry,
+  setNavigation,
+  ungroupEntry,
+  upsertHappiness,
+  voteEntry,
+  unvoteEntry,
+} from "@/lib/retro/api";
+import {
+  clearStoredActiveSlug,
+  clearStoredToken,
+  getStoredActiveSlug,
+  getStoredToken,
+  setStoredActiveSlug,
+  setStoredToken,
+} from "@/lib/retro/session-storage";
 
 type DragState = {
   sourceSide: Side;
@@ -42,11 +65,6 @@ type PendingGroup = {
   sourceId: string;
   targetId: string;
 };
-
-type ApiError = { error?: string };
-
-const ACTIVE_SLUG_KEY = "retro.activeSlug";
-const tokenKey = (slug: string) => `retro.token.${slug}`;
 
 export default function Home() {
   const router = useRouter();
@@ -214,41 +232,17 @@ export default function Home() {
 
   const loadSessionState = useCallback(
     async (slug: string, token: string) => {
-      const response = await fetch(`/api/sessions/${slug}/state`, {
-        cache: "no-store",
-        headers: token ? { "x-participant-token": token } : {},
-      });
-      const payload = (await response.json()) as
-        | SessionStateResponse
-        | ApiError;
-      if (!response.ok || !("session" in payload)) {
-        throw new Error(
-          "error" in payload
-            ? (payload.error ?? "Unable to load session")
-            : "Unable to load session",
-        );
-      }
-      applySessionState(payload);
+      const state = await getSessionState(slug, token);
+      applySessionState(state);
     },
     [applySessionState],
   );
 
-  const apiRequest = useCallback(
-    async (path: string, options: RequestInit) => {
+  const runMutation = useCallback(
+    async (mutation: () => Promise<void>) => {
       if (!sessionSlug || !participantToken)
         throw new Error("Missing session credentials");
-      const response = await fetch(path, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          "x-participant-token": participantToken,
-          ...(options.headers ?? {}),
-        },
-      });
-      const payload = (await response.json()) as ApiError;
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Request failed");
-      }
+      await mutation();
       await loadSessionState(sessionSlug, participantToken);
     },
     [loadSessionState, participantToken, sessionSlug],
@@ -256,9 +250,9 @@ export default function Home() {
 
   const resetToCreateSession = useCallback(() => {
     if (sessionSlug) {
-      localStorage.removeItem(tokenKey(sessionSlug));
+      clearStoredToken(sessionSlug);
     }
-    localStorage.removeItem(ACTIVE_SLUG_KEY);
+    clearStoredActiveSlug();
     setSessionSlug("");
     setParticipantToken("");
     setSessionState(null);
@@ -276,18 +270,7 @@ export default function Home() {
   const endSession = useCallback(async () => {
     if (!isAdmin || !sessionSlug || !participantToken) return;
     try {
-      const response = await fetch(`/api/sessions/${sessionSlug}/navigation`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-participant-token": participantToken,
-        },
-        body: JSON.stringify({ activeSection: "done" }),
-      });
-      if (!response.ok) {
-        const payload = (await response.json()) as ApiError;
-        throw new Error(payload.error ?? "Unable to end session");
-      }
+      await setNavigation(sessionSlug, participantToken, { activeSection: "done" });
       resetToCreateSession();
       setApiError(null);
     } catch (error) {
@@ -326,10 +309,10 @@ export default function Home() {
   }, [inviteSlugFromUrl]);
 
   useEffect(() => {
-    const slug = localStorage.getItem(ACTIVE_SLUG_KEY);
+    const slug = getStoredActiveSlug();
     const targetSlug = inviteSlugFromUrl || slug;
     if (!targetSlug) return;
-    const token = localStorage.getItem(tokenKey(targetSlug)) ?? "";
+    const token = getStoredToken(targetSlug);
     if (!token) return;
 
     setSessionSlug(targetSlug);
@@ -379,30 +362,9 @@ export default function Home() {
     try {
       setApiError(null);
       const slug = parseSessionCode(joinSessionCode);
-      const response = await fetch(`/api/sessions/${slug}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: joinParticipantName.trim(),
-        }),
-      });
-      const payload = (await response.json()) as
-        | {
-            token: string;
-            sessionSlug: string;
-          }
-        | ApiError;
-
-      if (!response.ok || !("token" in payload)) {
-        throw new Error(
-          "error" in payload
-            ? payload.error ?? "Unable to join session"
-            : "Unable to join session",
-        );
-      }
-
-      localStorage.setItem(ACTIVE_SLUG_KEY, payload.sessionSlug);
-      localStorage.setItem(tokenKey(payload.sessionSlug), payload.token);
+      const payload = await joinSession(slug, { name: joinParticipantName.trim() });
+      setStoredActiveSlug(payload.sessionSlug);
+      setStoredToken(payload.sessionSlug, payload.token);
       setSessionSlug(payload.sessionSlug);
       setParticipantToken(payload.token);
       setIsSetupComplete(true);
@@ -414,10 +376,7 @@ export default function Home() {
 
   const addStandaloneItem = (side: Side, text: string) => {
     const type = side === "right" ? "went_right" : "went_wrong";
-    apiRequest(`/api/sessions/${sessionSlug}/entries`, {
-      method: "POST",
-      body: JSON.stringify({ type, content: text }),
-    }).catch((error: unknown) => {
+    runMutation(() => createEntry(sessionSlug, participantToken, { type, content: text })).catch((error: unknown) => {
       setApiError(
         error instanceof Error ? error.message : "Unable to create entry",
       );
@@ -435,13 +394,10 @@ export default function Home() {
       const voteTargetId = votedEntryId ?? groupedIds[0];
       if (!voteTargetId) return;
 
-      const method = votedEntryId ? "DELETE" : "POST";
-      const path = votedEntryId
-        ? `/api/sessions/${sessionSlug}/votes/${voteTargetId}`
-        : `/api/sessions/${sessionSlug}/votes`;
-      const body = votedEntryId ? undefined : JSON.stringify({ entryId: voteTargetId });
-
-      apiRequest(path, { method, body }).catch((error: unknown) => {
+      const action = votedEntryId
+        ? () => unvoteEntry(sessionSlug, participantToken, voteTargetId)
+        : () => voteEntry(sessionSlug, participantToken, voteTargetId);
+      runMutation(action).catch((error: unknown) => {
         setApiError(
           error instanceof Error ? error.message : "Unable to update vote",
         );
@@ -449,13 +405,10 @@ export default function Home() {
       return;
     }
 
-    const method = target.voted ? "DELETE" : "POST";
-    const path = target.voted
-      ? `/api/sessions/${sessionSlug}/votes/${id}`
-      : `/api/sessions/${sessionSlug}/votes`;
-    const body = target.voted ? undefined : JSON.stringify({ entryId: id });
-
-    apiRequest(path, { method, body }).catch((error: unknown) => {
+    const action = target.voted
+      ? () => unvoteEntry(sessionSlug, participantToken, id)
+      : () => voteEntry(sessionSlug, participantToken, id);
+    runMutation(action).catch((error: unknown) => {
       setApiError(
         error instanceof Error ? error.message : "Unable to update vote",
       );
@@ -468,23 +421,11 @@ export default function Home() {
     if (!target) return;
 
     if (target.kind === "group") {
-      const ungroupRequests = target.items.map((item) =>
-        fetch(`/api/sessions/${sessionSlug}/groups/${target.id}/entries/${item.id}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            "x-participant-token": participantToken
-          }
-        }).then(async (response) => {
-          if (!response.ok) {
-            const payload = (await response.json()) as ApiError;
-            throw new Error(payload.error ?? "Unable to ungroup");
-          }
-        })
-      );
-
-      Promise.all(ungroupRequests)
-        .then(() => loadSessionState(sessionSlug, participantToken))
+      runMutation(async () => {
+        await Promise.all(
+          target.items.map((item) => ungroupEntry(sessionSlug, participantToken, target.id, item.id)),
+        );
+      })
         .catch((error: unknown) => {
           setApiError(error instanceof Error ? error.message : "Unable to ungroup items");
         });
@@ -501,9 +442,7 @@ export default function Home() {
       return;
     }
 
-    apiRequest(`/api/sessions/${sessionSlug}/entries/${id}`, {
-      method: "DELETE",
-    }).catch((error: unknown) => {
+    runMutation(() => deleteEntry(sessionSlug, participantToken, id)).catch((error: unknown) => {
       setApiError(
         error instanceof Error ? error.message : "Unable to remove entry",
       );
@@ -516,14 +455,13 @@ export default function Home() {
     targetId: string,
     groupName: string,
   ) => {
-    apiRequest(`/api/sessions/${sessionSlug}/groups`, {
-      method: "POST",
-      body: JSON.stringify({
+    runMutation(() =>
+      createGroup(sessionSlug, participantToken, {
         sourceEntryId: sourceId,
         targetEntryId: targetId,
         name: groupName
-      })
-    }).catch((error: unknown) => {
+      }),
+    ).catch((error: unknown) => {
       setApiError(error instanceof Error ? error.message : "Unable to create group");
     });
   };
@@ -533,10 +471,7 @@ export default function Home() {
     sourceId: string,
     targetGroupId: string,
   ) => {
-    apiRequest(`/api/sessions/${sessionSlug}/groups/${targetGroupId}/entries`, {
-      method: "POST",
-      body: JSON.stringify({ entryId: sourceId })
-    }).catch((error: unknown) => {
+    runMutation(() => addEntryToGroup(sessionSlug, participantToken, targetGroupId, sourceId)).catch((error: unknown) => {
       setApiError(error instanceof Error ? error.message : "Unable to add to group");
     });
   };
@@ -548,10 +483,7 @@ export default function Home() {
   ) => {
     if (sourceSide === targetSide) return;
     const nextType = targetSide === "right" ? "went_right" : "went_wrong";
-    apiRequest(`/api/sessions/${sessionSlug}/entries/${sourceId}/move`, {
-      method: "POST",
-      body: JSON.stringify({ type: nextType })
-    }).catch((error: unknown) => {
+    runMutation(() => moveEntry(sessionSlug, participantToken, sourceId, nextType)).catch((error: unknown) => {
       setApiError(error instanceof Error ? error.message : "Unable to move entry");
     });
   };
@@ -567,9 +499,7 @@ export default function Home() {
     const extracted = targetGroup.items.find((entry) => entry.id === itemId);
     if (!extracted) return null;
 
-    await apiRequest(`/api/sessions/${sessionSlug}/groups/${groupId}/entries/${itemId}`, {
-      method: "DELETE"
-    });
+    await runMutation(() => ungroupEntry(sessionSlug, participantToken, groupId, itemId));
     return extracted.text;
   };
 
@@ -657,10 +587,12 @@ export default function Home() {
     }
     const queue = buildDiscussionQueue(wentRightItems, wentWrongItems);
     if (!queue.length) return;
-    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
-      method: "POST",
-      body: JSON.stringify({ activeSection: "discussion", discussionEntryId: queue[0]?.id ?? null }),
-    }).catch((error: unknown) => {
+    runMutation(() =>
+      setNavigation(sessionSlug, participantToken, {
+        activeSection: "discussion",
+        discussionEntryId: queue[0]?.id ?? null
+      }),
+    ).catch((error: unknown) => {
       setApiError(
         error instanceof Error ? error.message : "Unable to start discussion",
       );
@@ -671,10 +603,12 @@ export default function Home() {
     if (!isAdmin) return;
     if (discussionIndex >= discussionQueue.length - 1) return;
     const nextTopic = discussionQueue[discussionIndex + 1];
-    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
-      method: "POST",
-      body: JSON.stringify({ activeSection: "discussion", discussionEntryId: nextTopic?.id ?? null }),
-    }).catch((error: unknown) => {
+    runMutation(() =>
+      setNavigation(sessionSlug, participantToken, {
+        activeSection: "discussion",
+        discussionEntryId: nextTopic?.id ?? null
+      }),
+    ).catch((error: unknown) => {
       setApiError(error instanceof Error ? error.message : "Unable to move to next topic");
     });
   };
@@ -683,20 +617,24 @@ export default function Home() {
     if (!isAdmin) return;
     if (discussionIndex === 0) return;
     const previousTopic = discussionQueue[discussionIndex - 1];
-    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
-      method: "POST",
-      body: JSON.stringify({ activeSection: "discussion", discussionEntryId: previousTopic?.id ?? null }),
-    }).catch((error: unknown) => {
+    runMutation(() =>
+      setNavigation(sessionSlug, participantToken, {
+        activeSection: "discussion",
+        discussionEntryId: previousTopic?.id ?? null
+      }),
+    ).catch((error: unknown) => {
       setApiError(error instanceof Error ? error.message : "Unable to move to previous topic");
     });
   };
 
   const finishDiscussion = () => {
     if (!isAdmin) return;
-    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
-      method: "POST",
-      body: JSON.stringify({ activeSection: "happiness", discussionEntryId: null }),
-    }).catch((error: unknown) => {
+    runMutation(() =>
+      setNavigation(sessionSlug, participantToken, {
+        activeSection: "happiness",
+        discussionEntryId: null
+      }),
+    ).catch((error: unknown) => {
       setApiError(
         error instanceof Error
           ? error.message
@@ -911,32 +849,13 @@ export default function Home() {
                       if (!canEnterRetro) return;
                       try {
                         setApiError(null);
-                        const response = await fetch("/api/sessions", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            title: teamName.trim(),
-                            adminName: adminName.trim(),
-                          }),
+                        const payload = await createSession({
+                          title: teamName.trim(),
+                          adminName: adminName.trim(),
                         });
-                        const payload = (await response.json()) as
-                          | {
-                              session: { slug: string };
-                              token: string;
-                            }
-                          | ApiError;
-
-                        if (!response.ok || !("session" in payload)) {
-                          throw new Error(
-                            "error" in payload
-                              ? (payload.error ?? "Unable to create session")
-                              : "Unable to create session",
-                          );
-                        }
-
                         const slug = payload.session.slug;
-                        localStorage.setItem(ACTIVE_SLUG_KEY, slug);
-                        localStorage.setItem(tokenKey(slug), payload.token);
+                        setStoredActiveSlug(slug);
+                        setStoredToken(slug, payload.token);
                         setSessionSlug(slug);
                         setParticipantToken(payload.token);
                         setIsSetupComplete(true);
@@ -1039,10 +958,9 @@ export default function Home() {
                     disabled={!isAdmin}
                     onClick={() => {
                       if (!isAdmin) return;
-                      apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
-                        method: "POST",
-                        body: JSON.stringify({ activeSection: "retro" }),
-                      }).catch((error: unknown) => {
+                      runMutation(() =>
+                        setNavigation(sessionSlug, participantToken, { activeSection: "retro" }),
+                      ).catch((error: unknown) => {
                         setApiError(
                           error instanceof Error
                             ? error.message
@@ -1151,10 +1069,9 @@ export default function Home() {
                       <Button
                         type="button"
                         onClick={() => {
-                          apiRequest(`/api/sessions/${sessionSlug}/happiness`, {
-                            method: "POST",
-                            body: JSON.stringify({ score: happinessScore }),
-                          })
+                          runMutation(() =>
+                            upsertHappiness(sessionSlug, participantToken, happinessScore),
+                          )
                             .then(() => setHappinessSubmitted(true))
                             .catch((error: unknown) => {
                               setApiError(
