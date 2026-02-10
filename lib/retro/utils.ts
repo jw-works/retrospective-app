@@ -32,17 +32,16 @@ export function initialsFromName(name: string): string {
   return `${first}${last}`.toUpperCase();
 }
 
-export function colorFromSeed(seed: string): { background: string; border: string; text: string } {
+function hashSeed(seed: string): number {
   let hash = 0;
   for (let index = 0; index < seed.length; index += 1) {
     hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
   }
-  const hue = hash % 360;
-  return {
-    background: `hsl(${hue} 70% 92%)`,
-    border: `hsl(${hue} 55% 78%)`,
-    text: `hsl(${hue} 42% 28%)`
-  };
+  return hash;
+}
+
+export function colorToneIndexFromSeed(seed: string): number {
+  return hashSeed(seed) % 12;
 }
 
 export function toRetroItems(

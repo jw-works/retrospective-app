@@ -20,6 +20,56 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --radius: 0.625rem;
+  --retro-page: #f4f5f6;
+  --retro-surface: #eeeeef;
+  --retro-surface-soft: rgba(255, 255, 255, 0.35);
+  --retro-card: rgba(255, 255, 255, 0.28);
+  --retro-card-strong: rgba(255, 255, 255, 0.5);
+  --retro-card-hover: rgba(255, 255, 255, 0.55);
+  --retro-text-heading: #3a3d41;
+  --retro-text-strong: #565b62;
+  --retro-text-body: #4f545a;
+  --retro-text-muted: #7a8088;
+  --retro-text-subtle: #9aa0a6;
+  --retro-danger: #a64141;
+  --retro-dot: #c9ccd1;
+  --retro-border: rgb(0 0 0 / 0.08);
+  --retro-border-soft: rgb(0 0 0 / 0.06);
+}
+
+.dark {
+  --background: oklch(0.16 0 0);
+  --foreground: oklch(0.93 0 0);
+  --card: oklch(0.22 0 0);
+  --card-foreground: oklch(0.93 0 0);
+  --popover: oklch(0.22 0 0);
+  --popover-foreground: oklch(0.93 0 0);
+  --primary: oklch(0.75 0.14 176);
+  --primary-foreground: oklch(0.2 0.02 180);
+  --secondary: oklch(0.26 0 0);
+  --secondary-foreground: oklch(0.9 0 0);
+  --muted: oklch(0.23 0 0);
+  --muted-foreground: oklch(0.75 0 0);
+  --accent: oklch(0.25 0.01 180);
+  --accent-foreground: oklch(0.93 0 0);
+  --border: oklch(0.34 0 0);
+  --input: oklch(0.34 0 0);
+  --ring: oklch(0.72 0.14 176);
+  --retro-page: #090b0e;
+  --retro-surface: #15191f;
+  --retro-surface-soft: #1a1f26;
+  --retro-card: #20252c;
+  --retro-card-strong: #262c34;
+  --retro-card-hover: #2b323b;
+  --retro-text-heading: #f4f7fb;
+  --retro-text-strong: #dde3ea;
+  --retro-text-body: #cad2db;
+  --retro-text-muted: #9ea9b6;
+  --retro-text-subtle: #7d8896;
+  --retro-danger: #ff9a9a;
+  --retro-dot: #55606d;
+  --retro-border: rgb(255 255 255 / 0.14);
+  --retro-border-soft: rgb(255 255 255 / 0.1);
 }
 
 @theme inline {
@@ -41,6 +91,21 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-retro-page: var(--retro-page);
+  --color-retro-surface: var(--retro-surface);
+  --color-retro-surface-soft: var(--retro-surface-soft);
+  --color-retro-card: var(--retro-card);
+  --color-retro-card-strong: var(--retro-card-strong);
+  --color-retro-card-hover: var(--retro-card-hover);
+  --color-retro-heading: var(--retro-text-heading);
+  --color-retro-strong: var(--retro-text-strong);
+  --color-retro-body: var(--retro-text-body);
+  --color-retro-muted: var(--retro-text-muted);
+  --color-retro-subtle: var(--retro-text-subtle);
+  --color-retro-danger: var(--retro-danger);
+  --color-retro-dot: var(--retro-dot);
+  --color-retro-border: var(--retro-border);
+  --color-retro-border-soft: var(--retro-border-soft);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -52,9 +117,45 @@
 }
 
 body {
-  background: #f4f5f6;
-  color: #2f3236;
+  background: var(--retro-page);
+  color: var(--retro-text-body);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     "Apple Color Emoji", "Segoe UI Emoji";
   letter-spacing: 0.1px;
 }
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="range"]:not(:disabled),
+summary {
+  cursor: pointer;
+}
+
+.identity-badge {
+  --badge-hue: 210;
+  background: hsl(var(--badge-hue) 72% 92%);
+  border-color: hsl(var(--badge-hue) 55% 78%);
+  color: hsl(var(--badge-hue) 42% 28%);
+}
+
+.dark .identity-badge {
+  background: hsl(var(--badge-hue) 16% 26%);
+  border-color: hsl(var(--badge-hue) 14% 38%);
+  color: hsl(var(--badge-hue) 26% 84%);
+}
+
+.identity-tone-0 { --badge-hue: 6; }
+.identity-tone-1 { --badge-hue: 26; }
+.identity-tone-2 { --badge-hue: 44; }
+.identity-tone-3 { --badge-hue: 74; }
+.identity-tone-4 { --badge-hue: 96; }
+.identity-tone-5 { --badge-hue: 132; }
+.identity-tone-6 { --badge-hue: 168; }
+.identity-tone-7 { --badge-hue: 196; }
+.identity-tone-8 { --badge-hue: 222; }
+.identity-tone-9 { --badge-hue: 252; }
+.identity-tone-10 { --badge-hue: 286; }
+.identity-tone-11 { --badge-hue: 330; }

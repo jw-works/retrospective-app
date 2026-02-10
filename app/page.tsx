@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Share2 } from "lucide-react";
+import { Moon, Share2, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/discussion";
 import type { SessionStateResponse } from "@/lib/backend/types";
 import { RetroColumn } from "@/components/retro/retro-column";
-import { colorFromSeed, initialsFromName, parseSessionCode, toRetroItems } from "@/lib/retro/utils";
+import { colorToneIndexFromSeed, initialsFromName, parseSessionCode, toRetroItems } from "@/lib/retro/utils";
 import {
   addEntryToGroup,
   createEntry,
@@ -66,6 +66,8 @@ type PendingGroup = {
   targetId: string;
 };
 
+const THEME_KEY = "retro.theme";
+
 export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -95,6 +97,7 @@ export default function Home() {
   const [happinessMode, setHappinessMode] = useState(false);
   const [happinessScore, setHappinessScore] = useState(7);
   const [happinessSubmitted, setHappinessSubmitted] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const sessionId = sessionSlug || "SES-7K2P9M";
 
   const currentStage = sessionState
@@ -168,22 +171,17 @@ export default function Home() {
     () => initialsFromName(isSetupComplete ? viewerName || adminName : adminName),
     [adminName, isSetupComplete, viewerName]
   );
-  const currentUserColor = useMemo(
-    () => colorFromSeed((sessionState?.viewer?.id ?? "") || viewerName || adminName || "user"),
+  const currentUserTone = useMemo(
+    () => colorToneIndexFromSeed((sessionState?.viewer?.id ?? "") || viewerName || adminName || "user"),
     [adminName, sessionState?.viewer?.id, viewerName]
   );
   const entryBadge = (entryId: string) => {
     const authorId = entryAuthorMap.get(entryId) ?? "";
     const authorName = participantMap.get(authorId)?.name ?? "";
-    const color = colorFromSeed(authorId || entryId);
+    const tone = colorToneIndexFromSeed(authorId || entryId);
     return (
       <span
-        className="grid size-6 shrink-0 place-items-center rounded-full border text-[10px] font-semibold"
-        style={{
-          background: color.background,
-          borderColor: color.border,
-          color: color.text
-        }}
+        className={`identity-badge identity-tone-${tone} grid size-6 shrink-0 place-items-center rounded-full border text-[10px] font-semibold`}
         title={authorName || "Unknown"}
       >
         {initialsFromName(authorName)}
@@ -307,6 +305,22 @@ export default function Home() {
     if (!inviteSlugFromUrl) return;
     setJoinSessionCode(inviteSlugFromUrl);
   }, [inviteSlugFromUrl]);
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem(THEME_KEY);
+    const initialTheme = savedTheme === "dark" || savedTheme === "light"
+      ? savedTheme
+      : window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle("dark", initialTheme === "dark");
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    window.localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
 
   useEffect(() => {
     const slug = getStoredActiveSlug();
@@ -662,7 +676,7 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
           <input
-            className="mt-4 block h-[42px] w-full rounded-[10px] border border-black/6 bg-white/45 px-3 text-[#565b62] placeholder:text-[#9aa0a6]"
+            className="mt-4 block h-[42px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card px-3 text-retro-strong placeholder:text-retro-subtle"
             type="text"
             placeholder="Group name"
             value={groupNameInput}
@@ -693,7 +707,7 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
-      <header className="mb-7 flex items-center justify-between text-sm text-[#6f757d]">
+      <header className="mb-7 flex items-center justify-between text-sm text-retro-muted">
         {isSetupComplete ? (
           <div className="flex items-center gap-2">
             {stageOrder.map((stage, index) => {
@@ -706,16 +720,16 @@ export default function Home() {
                   <span
                     className={`inline-flex items-center rounded-full border px-3 py-2 text-xs ${
                       isCurrent
-                        ? "border-black/10 bg-white/55 text-[#4f545a]"
+                        ? "border-retro-border bg-retro-card-hover text-retro-body"
                         : isDone
-                          ? "border-black/8 bg-white/35 text-[#6a7078]"
-                          : "border-black/6 bg-white/20 text-[#9aa0a6]"
+                          ? "border-retro-border bg-retro-surface-soft text-retro-body"
+                          : "border-retro-border-soft bg-retro-card text-retro-subtle"
                     }`}
                   >
                     {stageLabel[stage]}
                   </span>
                   {index < stageOrder.length - 1 ? (
-                    <span className="text-[#9aa0a6]">›</span>
+                    <span className="text-retro-subtle">›</span>
                   ) : null}
                 </div>
               );
@@ -723,22 +737,25 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white/35 px-3 py-2 text-xs text-[#5f656d] before:size-1.5 before:rounded-full before:bg-[#c9ccd1] before:content-['']">
+            <span className="inline-flex items-center gap-2 rounded-full border border-retro-border bg-retro-surface-soft px-3 py-2 text-xs text-retro-strong before:size-1.5 before:rounded-full before:bg-retro-dot before:content-['']">
               Session Launchpad
             </span>
-            <span className="text-xs text-[#8b9096]">
+            <span className="text-xs text-retro-subtle">
               Create your retrospective room
             </span>
           </div>
         )}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Toggle dark mode"
+            className="grid size-[34px] place-items-center rounded-full border border-retro-border bg-retro-surface-soft text-retro-strong"
+            onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+          >
+            {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          </button>
           <span
-            className="grid size-[34px] place-items-center rounded-full border text-[11px] font-medium shadow-[0_10px_22px_rgba(0,0,0,0.07)]"
-            style={{
-              background: currentUserColor.background,
-              borderColor: currentUserColor.border,
-              color: currentUserColor.text
-            }}
+            className={`identity-badge identity-tone-${currentUserTone} grid size-[34px] place-items-center rounded-full border text-[11px] font-medium shadow-[0_10px_22px_rgba(0,0,0,0.07)]`}
           >
             {currentUserInitials}
           </span>
@@ -748,23 +765,23 @@ export default function Home() {
       {!isSetupComplete ? (
         inviteSlugFromUrl ? (
           <section className="my-[14px] mb-[26px]">
-            <div className="mx-auto max-w-[540px] overflow-hidden rounded-[20px] border border-black/6 bg-[#eeeeef] p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)]">
-              <p className="text-xs tracking-[0.2em] text-[#7a8088] uppercase">
+            <div className="mx-auto max-w-[540px] overflow-hidden rounded-[20px] border border-retro-border-soft bg-retro-surface p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)]">
+              <p className="text-xs tracking-[0.2em] text-retro-muted uppercase">
                 Join Session
               </p>
-              <h1 className="mt-2 text-[34px] leading-[1.1] font-medium text-[#3a3d41]">
+              <h1 className="mt-2 text-[34px] leading-[1.1] font-medium text-retro-heading">
                 Enter Your Name
               </h1>
-              <p className="mt-2 text-sm text-[#6f757d]">
+              <p className="mt-2 text-sm text-retro-muted">
                 You are joining session{" "}
-                <span className="font-medium text-[#565b62]">
+                <span className="font-medium text-retro-strong">
                   {inviteSlugFromUrl}
                 </span>
                 .
               </p>
               <div className="mt-6">
                 <input
-                  className="block h-[44px] w-full rounded-[12px] border border-black/6 bg-white/50 px-3 text-[#565b62] placeholder:text-[#9aa0a6]"
+                  className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
                   type="text"
                   placeholder="Your name"
                   value={joinParticipantName}
@@ -787,22 +804,22 @@ export default function Home() {
                 </Button>
               </div>
               {apiError ? (
-                <p className="mt-3 text-sm text-[#a64141]">{apiError}</p>
+                <p className="mt-3 text-sm text-retro-danger">{apiError}</p>
               ) : null}
             </div>
           </section>
         ) : (
         <section className="my-[14px] mb-[26px]">
-          <div className="relative overflow-hidden rounded-[20px] border border-black/6 bg-[#eeeeef] p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_10%_15%,rgba(255,255,255,0.7),rgba(255,255,255,0)_46%),radial-gradient(circle_at_90%_90%,rgba(255,255,255,0.5),rgba(255,255,255,0)_45%)] before:content-['']">
+          <div className="relative overflow-hidden rounded-[20px] border border-retro-border-soft bg-retro-surface p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_10%_15%,rgba(255,255,255,0.32),rgba(255,255,255,0)_46%),radial-gradient(circle_at_90%_90%,rgba(255,255,255,0.24),rgba(255,255,255,0)_45%)] before:content-[''] dark:before:bg-none">
             <div className="relative z-10 grid grid-cols-[1.45fr_1fr] gap-6 max-[840px]:grid-cols-1">
               <section>
-                <p className="text-xs tracking-[0.2em] text-[#7a8088] uppercase">
+                <p className="text-xs tracking-[0.2em] text-retro-muted uppercase">
                   Welcome
                 </p>
-                <h1 className="mt-2 text-[38px] leading-[1.05] font-medium text-[#3a3d41]">
+                <h1 className="mt-2 text-[38px] leading-[1.05] font-medium text-retro-heading">
                   Open a New Retro Room
                 </h1>
-                <p className="mt-3 max-w-[45ch] text-sm text-[#6f757d]">
+                <p className="mt-3 max-w-[45ch] text-sm text-retro-muted">
                   Give your session a team identity and assign the facilitator
                   before the board unlocks.
                 </p>
@@ -811,13 +828,13 @@ export default function Home() {
                   <div>
                     <label
                       htmlFor="team-name"
-                      className="mb-1 block text-sm text-[#565b62]"
+                      className="mb-1 block text-sm text-retro-strong"
                     >
                       Team Name
                     </label>
                     <input
                       id="team-name"
-                      className="block h-[44px] w-full rounded-[12px] border border-black/6 bg-white/50 px-3 text-[#565b62] placeholder:text-[#9aa0a6]"
+                      className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
                       type="text"
                       placeholder="e.g. Product Engineering"
                       value={teamName}
@@ -827,13 +844,13 @@ export default function Home() {
                   <div>
                     <label
                       htmlFor="admin-name"
-                      className="mb-1 block text-sm text-[#565b62]"
+                      className="mb-1 block text-sm text-retro-strong"
                     >
                       Facilitator Name
                     </label>
                     <input
                       id="admin-name"
-                      className="block h-[44px] w-full rounded-[12px] border border-black/6 bg-white/50 px-3 text-[#565b62] placeholder:text-[#9aa0a6]"
+                      className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
                       type="text"
                       placeholder="e.g. Alex Johnson"
                       value={adminName}
@@ -874,28 +891,28 @@ export default function Home() {
                   </Button>
                 </div>
                 {apiError ? (
-                  <p className="mt-3 text-sm text-[#a64141]">{apiError}</p>
+                  <p className="mt-3 text-sm text-retro-danger">{apiError}</p>
                 ) : null}
               </section>
 
-              <section className="rounded-[16px] border border-black/6 bg-white/35 p-5">
-                <h3 className="m-0 text-base font-medium text-[#565b62]">
+              <section className="rounded-[16px] border border-retro-border-soft bg-retro-surface-soft p-5">
+                <h3 className="m-0 text-base font-medium text-retro-strong">
                   Join Instead
                 </h3>
-                <p className="mt-2 text-xs text-[#7a8088]">
+                <p className="mt-2 text-xs text-retro-muted">
                   Got a shared session code? Join an existing retrospective
                   room.
                 </p>
-                <div className="mt-4 grid gap-2.5 rounded-[14px] border border-black/6 bg-white/45 p-4">
+                <div className="mt-4 grid gap-2.5 rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
                   <input
-                    className="block h-[40px] w-full rounded-[10px] border border-black/6 bg-white/65 px-3 text-sm text-[#565b62] placeholder:text-[#9aa0a6]"
+                    className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
                     type="text"
                     placeholder="Session code or invite URL"
                     value={joinSessionCode}
                     onChange={(event) => setJoinSessionCode(event.target.value)}
                   />
                   <input
-                    className="block h-[40px] w-full rounded-[10px] border border-black/6 bg-white/65 px-3 text-sm text-[#565b62] placeholder:text-[#9aa0a6]"
+                    className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
                     type="text"
                     placeholder="Your name"
                     value={joinParticipantName}
@@ -912,7 +929,7 @@ export default function Home() {
                     Join Session
                   </Button>
                 </div>
-                <div className="mt-4 rounded-[12px] border border-black/6 bg-white/35 px-3 py-2 text-xs text-[#7a8088]">
+                <div className="mt-4 rounded-[12px] border border-retro-border-soft bg-retro-surface-soft px-3 py-2 text-xs text-retro-muted">
                   Ask the admin to share the invite code from their session.
                 </div>
               </section>
@@ -925,16 +942,16 @@ export default function Home() {
           <section className="my-[14px] mb-[26px]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-[#3a3d41]">
+                  <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-retro-heading">
                   {teamName.trim()} Retrospective
                 </h1>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#7a8088]">
-                  <span className="rounded-[10px] border border-black/8 bg-white/40 px-2.5 py-1">
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-retro-muted">
+                  <span className="rounded-[10px] border border-retro-border bg-retro-surface-soft px-2.5 py-1">
                     {sessionId}
                   </span>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 rounded-[10px] border border-black/8 bg-white/40 px-2.5 py-1 text-[#6a7078]"
+                    className="inline-flex items-center gap-1 rounded-[10px] border border-retro-border bg-retro-surface-soft px-2.5 py-1 text-retro-body"
                     onClick={copyInviteLink}
                   >
                     <Share2 className="size-3.5" />
@@ -980,25 +997,25 @@ export default function Home() {
               </div>
             </div>
             {apiError ? (
-              <p className="mt-2 text-sm text-[#a64141]">{apiError}</p>
+              <p className="mt-2 text-sm text-retro-danger">{apiError}</p>
             ) : null}
           </section>
 
           <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
             {discussionMode ? (
-              <section className="relative col-span-2 min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:col-span-1 max-[840px]:min-h-[200px]">
+              <section className="relative col-span-2 min-h-[220px] overflow-hidden rounded-[18px] border border-retro-border-soft bg-retro-surface p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/40 before:to-white/0 before:content-[''] dark:before:bg-none max-[840px]:col-span-1 max-[840px]:min-h-[200px]">
                 <div className="relative z-10 min-h-[320px]">
                   {happinessMode ? (
                     <div className="max-w-xl">
-                      <p className="text-sm text-[#7a8088]">Session complete</p>
-                      <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-[#3a3d41]">
+                      <p className="text-sm text-retro-muted">Session complete</p>
+                      <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-retro-heading">
                         Happiness Check
                       </h2>
-                      <p className="mt-2 text-sm text-[#6f757d]">
+                      <p className="mt-2 text-sm text-retro-muted">
                         How do you feel about this retrospective session?
                       </p>
                       <div className="mt-5">
-                        <div className="mb-2 flex items-center gap-2 text-sm text-[#565b62]">
+                        <div className="mb-2 flex items-center gap-2 text-sm text-retro-strong">
                           <span className="text-xl leading-none" aria-hidden>
                             {happinessMood.emoji}
                           </span>
@@ -1013,9 +1030,9 @@ export default function Home() {
                           onChange={(event) =>
                             setHappinessScore(Number(event.target.value))
                           }
-                          className="w-full accent-neutral-700"
+                          className="w-full accent-primary"
                         />
-                        <div className="mt-1 flex justify-between text-xs text-[#7a8088]">
+                        <div className="mt-1 flex justify-between text-xs text-retro-muted">
                           <span>1</span>
                           <span>2</span>
                           <span>3</span>
@@ -1029,20 +1046,20 @@ export default function Home() {
                         </div>
                       </div>
                       {happinessSubmitted ? (
-                        <p className="mt-5 text-sm text-[#565b62]">
+                        <p className="mt-5 text-sm text-retro-strong">
                           Thanks. Happiness score recorded.
                         </p>
                       ) : null}
                     </div>
                   ) : currentDiscussion ? (
                     <>
-                      <p className="text-sm text-[#7a8088]">
+                      <p className="text-sm text-retro-muted">
                         {currentDiscussion.side === "right"
                           ? "What went right"
                           : "What went wrong"}{" "}
                         · {currentDiscussion.votes} votes
                       </p>
-                      <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-[#3a3d41]">
+                      <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-retro-heading">
                         {currentDiscussion.title}
                       </h2>
                       {currentDiscussion.kind === "group" ? (
@@ -1050,7 +1067,7 @@ export default function Home() {
                           {currentDiscussion.items.map((item, index) => (
                             <li
                               key={`${currentDiscussion.id}-${index}`}
-                              className="rounded-[12px] border border-black/6 bg-white/45 px-3 py-2 text-sm text-[#565b62]"
+                              className="rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2 text-sm text-retro-strong"
                             >
                               {item}
                             </li>
@@ -1059,7 +1076,7 @@ export default function Home() {
                       ) : null}
                     </>
                   ) : (
-                    <p className="text-sm text-[#7a8088]">
+                    <p className="text-sm text-retro-muted">
                       No topics available yet.
                     </p>
                   )}
@@ -1089,7 +1106,7 @@ export default function Home() {
 
                   {!happinessMode && currentDiscussion ? (
                     <>
-                      <span className="absolute bottom-1 left-0 text-sm text-[#7a8088]">
+                      <span className="absolute bottom-1 left-0 text-sm text-retro-muted">
                         {discussionIndex + 1}/{discussionQueue.length}
                       </span>
                       <div className="absolute right-0 bottom-0 flex items-center gap-2">
@@ -1182,9 +1199,9 @@ export default function Home() {
             )}
 
             <aside className="flex flex-col gap-4">
-              <section className="relative overflow-hidden rounded-2xl border border-black/6 bg-[#eeeeef] p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-['']">
+              <section className="relative overflow-hidden rounded-2xl border border-retro-border-soft bg-retro-surface p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/40 before:to-white/0 before:content-[''] dark:before:bg-none">
                 <div className="relative z-10">
-                  <h3 className="m-0 text-base font-medium text-[#565b62]">
+                  <h3 className="m-0 text-base font-medium text-retro-strong">
                     Joinees List
                   </h3>
                   <ul
@@ -1194,24 +1211,19 @@ export default function Home() {
                     {(sessionState?.participants ?? []).map((person) => (
                       <li
                         key={person.id}
-                        className="flex items-center justify-between gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3"
+                        className="flex items-center justify-between gap-3 rounded-[14px] border border-retro-border-soft bg-retro-card px-3 py-3"
                       >
-                        <span className="inline-flex items-center gap-2.5 text-sm text-[#4f545a]">
+                        <span className="inline-flex items-center gap-2.5 text-sm text-retro-body">
                           <span
                             aria-hidden
-                            className="grid size-[24px] place-items-center rounded-full border text-[10px] font-semibold"
-                            style={{
-                              background: colorFromSeed(person.id).background,
-                              borderColor: colorFromSeed(person.id).border,
-                              color: colorFromSeed(person.id).text
-                            }}
+                            className={`identity-badge identity-tone-${colorToneIndexFromSeed(person.id)} grid size-[24px] place-items-center rounded-full border text-[10px] font-semibold`}
                           >
                             {initialsFromName(person.name)}
                           </span>
                           {person.name}
                         </span>
                         {person.isAdmin ? (
-                          <span className="text-xs text-[#7a8088]">admin</span>
+                          <span className="text-xs text-retro-muted">admin</span>
                         ) : null}
                       </li>
                     ))}
