@@ -143,6 +143,24 @@
       "phase": "finished",
       "createdAt": "2026-02-10T16:01:52.174Z",
       "updatedAt": "2026-02-10T16:02:23.973Z"
+    },
+    {
+      "id": "ce34d036-b095-4b25-8168-d785fbc6b40f",
+      "slug": "test-aezeqd",
+      "title": "Test",
+      "createdByParticipantId": "d83ac983-1c54-4045-b172-57d73a605ce6",
+      "phase": "finished",
+      "createdAt": "2026-02-10T16:22:15.008Z",
+      "updatedAt": "2026-02-10T16:22:18.775Z"
+    },
+    {
+      "id": "c998dfb1-aa5d-4aed-9386-ebb1eb36939b",
+      "slug": "test-dlv3zs",
+      "title": "Test",
+      "createdByParticipantId": "6db6338c-be6d-484b-a4c3-4548d9e57ef2",
+      "phase": "finished",
+      "createdAt": "2026-02-10T16:22:25.487Z",
+      "updatedAt": "2026-02-10T16:22:31.559Z"
     }
   ],
   "participants": [
@@ -327,6 +345,20 @@
       "name": "Chris Cole",
       "isAdmin": true,
       "createdAt": "2026-02-10T16:01:52.174Z"
+    },
+    {
+      "id": "d83ac983-1c54-4045-b172-57d73a605ce6",
+      "sessionId": "ce34d036-b095-4b25-8168-d785fbc6b40f",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T16:22:15.008Z"
+    },
+    {
+      "id": "6db6338c-be6d-484b-a4c3-4548d9e57ef2",
+      "sessionId": "c998dfb1-aa5d-4aed-9386-ebb1eb36939b",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T16:22:25.487Z"
     }
   ],
   "entries": [
@@ -777,6 +809,18 @@
       "activeSection": "done",
       "discussionEntryId": null,
       "updatedAt": "2026-02-10T16:02:23.973Z"
+    },
+    {
+      "sessionId": "ce34d036-b095-4b25-8168-d785fbc6b40f",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T16:22:18.775Z"
+    },
+    {
+      "sessionId": "c998dfb1-aa5d-4aed-9386-ebb1eb36939b",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T16:22:31.559Z"
     }
   ],
   "authTokens": [
@@ -935,6 +979,18 @@
       "participantId": "a93dbc80-e0f0-4d5b-b981-afbe56ee4b3b",
       "sessionId": "598104d9-3108-4c53-bfba-28a09a22333d",
       "createdAt": "2026-02-10T16:01:52.174Z"
+    },
+    {
+      "token": "36bb3123-0319-467d-ad2d-736c9ecaa56d",
+      "participantId": "d83ac983-1c54-4045-b172-57d73a605ce6",
+      "sessionId": "ce34d036-b095-4b25-8168-d785fbc6b40f",
+      "createdAt": "2026-02-10T16:22:15.008Z"
+    },
+    {
+      "token": "8e4591e9-0c73-48cb-959b-2b28ec04a8d3",
+      "participantId": "6db6338c-be6d-484b-a4c3-4548d9e57ef2",
+      "sessionId": "c998dfb1-aa5d-4aed-9386-ebb1eb36939b",
+      "createdAt": "2026-02-10T16:22:25.487Z"
     }
   ]
 }
