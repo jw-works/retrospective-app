@@ -116,10 +116,36 @@ export default function Home() {
   const [happinessScore, setHappinessScore] = useState(7);
   const [happinessSubmitted, setHappinessSubmitted] = useState(false);
 
+  const currentStage = !discussionMode
+    ? "retro"
+    : happinessMode
+      ? happinessSubmitted
+        ? "done"
+        : "happinessCheck"
+      : "discussion";
+  const stageOrder = ["retro", "discussion", "happinessCheck", "done"] as const;
+  const stageLabel: Record<(typeof stageOrder)[number], string> = {
+    retro: "Retro",
+    discussion: "Discussion",
+    happinessCheck: "Happiness Check",
+    done: "Done"
+  };
+  const currentStageIndex = stageOrder.indexOf(currentStage);
+
   const sortedRight = useMemo(() => sortEntries(wentRightItems), [wentRightItems]);
   const sortedWrong = useMemo(() => sortEntries(wentWrongItems), [wentWrongItems]);
   const hasDiscussionItems = wentRightItems.length + wentWrongItems.length > 0;
   const currentDiscussion = discussionQueue[discussionIndex];
+  const happinessMood =
+    happinessScore <= 2
+      ? { emoji: "😞", label: "Very low" }
+      : happinessScore <= 4
+        ? { emoji: "🙁", label: "Low" }
+        : happinessScore <= 5
+          ? { emoji: "😐", label: "Okay" }
+        : happinessScore <= 8
+          ? { emoji: "🙂", label: "Good" }
+            : { emoji: "😄", label: "Great" };
 
   const addWentRight = () => {
     const next = wentRightInput.trim();
@@ -437,11 +463,29 @@ export default function Home() {
       </Dialog>
 
       <header className="mb-7 flex items-center justify-between text-sm text-[#6f757d]">
-        <div className="flex items-center gap-[18px]">
-          <span className="inline-flex items-center gap-2 rounded-full border border-black/6 bg-white/35 px-3 py-2 text-[#5f656d] backdrop-blur-md before:size-1.5 before:rounded-full before:bg-[#c9ccd1] before:content-['']">
-            Retro
-          </span>
-          <span>This week</span>
+        <div className="flex items-center gap-2">
+          {stageOrder.map((stage, index) => {
+            const isCurrent = index === currentStageIndex;
+            const isDone = index < currentStageIndex;
+            const isBlocked = index > currentStageIndex;
+
+            return (
+              <div key={stage} className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full border px-3 py-2 text-xs ${
+                    isCurrent
+                      ? "border-black/10 bg-white/55 text-[#4f545a]"
+                      : isDone
+                        ? "border-black/8 bg-white/35 text-[#6a7078]"
+                        : "border-black/6 bg-white/20 text-[#9aa0a6]"
+                  }`}
+                >
+                  {stageLabel[stage]}
+                </span>
+                {index < stageOrder.length - 1 ? <span className="text-[#9aa0a6]">›</span> : null}
+              </div>
+            );
+          })}
         </div>
         <span
           aria-hidden
@@ -450,36 +494,26 @@ export default function Home() {
       </header>
 
       <section className="my-[14px] mb-[26px]">
-        <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-[#3a3d41]">Team Retrospective</h1>
-        <p className="mt-2.5 text-lg text-[#6f757d]">
-          Capture what went right, what went wrong, and who&apos;s online.
-        </p>
-        {!discussionMode ? (
-          <div className="mt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-[#3a3d41]">Team Retrospective</h1>
+          {!discussionMode ? (
             <Button type="button" onClick={startDiscussion} disabled={!hasDiscussionItems}>
               Start Discussion
             </Button>
-          </div>
-        ) : (
-          <div className="mt-5 flex items-center gap-2">
-            <Button type="button" variant="outline" onClick={() => setDiscussionMode(false)}>
-              Back To Board
-            </Button>
-            <span className="text-sm text-[#7a8088]">
-              {happinessMode
-                ? "Happiness Check"
-                : discussionQueue.length
-                  ? `${discussionIndex + 1}/${discussionQueue.length}`
-                  : "0/0"}
-            </span>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" onClick={() => setDiscussionMode(false)}>
+                Back To Board
+              </Button>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
         {discussionMode ? (
           <section className="relative col-span-2 min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:col-span-1 max-[840px]:min-h-[200px]">
-            <div className="relative z-10 min-h-[280px]">
+            <div className="relative z-10 min-h-[320px]">
               {happinessMode ? (
                 <div className="max-w-xl">
                   <p className="text-sm text-[#7a8088]">Session complete</p>
@@ -488,9 +522,12 @@ export default function Home() {
                     How do you feel about this retrospective session?
                   </p>
                   <div className="mt-5">
-                    <label htmlFor="happiness" className="mb-2 block text-sm text-[#565b62]">
-                      Team happiness: {happinessScore}/5
-                    </label>
+                    <div className="mb-2 flex items-center gap-2 text-sm text-[#565b62]">
+                      <span className="text-xl leading-none" aria-hidden>
+                        {happinessMood.emoji}
+                      </span>
+                      <span>{happinessMood.label}</span>
+                    </div>
                     <input
                       id="happiness"
                       type="range"
@@ -513,15 +550,9 @@ export default function Home() {
                       <span>10</span>
                     </div>
                   </div>
-                  {!happinessSubmitted ? (
-                    <div className="mt-5">
-                      <Button type="button" onClick={() => setHappinessSubmitted(true)}>
-                        Submit Check
-                      </Button>
-                    </div>
-                  ) : (
+                  {happinessSubmitted ? (
                     <p className="mt-5 text-sm text-[#565b62]">Thanks. Happiness score recorded.</p>
-                  )}
+                  ) : null}
                 </div>
               ) : currentDiscussion ? (
                 <>
@@ -549,8 +580,20 @@ export default function Home() {
                 <p className="text-sm text-[#7a8088]">No topics available yet.</p>
               )}
 
+              {happinessMode && !happinessSubmitted ? (
+                <div className="absolute right-0 bottom-0">
+                  <Button type="button" onClick={() => setHappinessSubmitted(true)}>
+                    Submit Check
+                  </Button>
+                </div>
+              ) : null}
+
               {!happinessMode && currentDiscussion ? (
-                <div className="absolute right-0 bottom-0 flex items-center gap-2">
+                <>
+                  <span className="absolute bottom-1 left-0 text-sm text-[#7a8088]">
+                    {discussionIndex + 1}/{discussionQueue.length}
+                  </span>
+                  <div className="absolute right-0 bottom-0 flex items-center gap-2">
                   <Button type="button" variant="outline" onClick={previousDiscussion} disabled={discussionIndex === 0}>
                     Previous
                   </Button>
@@ -563,7 +606,8 @@ export default function Home() {
                       Next Topic
                     </Button>
                   )}
-                </div>
+                  </div>
+                </>
               ) : null}
             </div>
           </section>
