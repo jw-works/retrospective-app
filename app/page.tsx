@@ -1,6 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 
 const people = [
   { name: "Annabel", online: true },
@@ -9,7 +18,15 @@ const people = [
   { name: "Sam", online: false }
 ];
 
+type Side = "right" | "wrong";
+
 type RetroItem = {
+  id: string;
+  text: string;
+};
+
+type ItemEntry = {
+  kind: "item";
   id: string;
   text: string;
   votes: number;
@@ -17,8 +34,41 @@ type RetroItem = {
   ts: number;
 };
 
-const seededRight: RetroItem[] = [
+type GroupEntry = {
+  kind: "group";
+  id: string;
+  name: string;
+  items: RetroItem[];
+  votes: number;
+  voted: boolean;
+  ts: number;
+};
+
+type RetroEntry = ItemEntry | GroupEntry;
+
+type DragState = {
+  sourceSide: Side;
+} & (
+  | {
+      kind: "entry-item";
+      id: string;
+    }
+  | {
+      kind: "grouped-item";
+      groupId: string;
+      itemId: string;
+    }
+);
+
+type PendingGroup = {
+  side: Side;
+  sourceId: string;
+  targetId: string;
+};
+
+const seededRight: RetroEntry[] = [
   {
+    kind: "item",
     id: "right-1",
     text: "Release shipped on time, idk whats happening but its very sad to see teams not coordinating",
     votes: 2,
@@ -26,6 +76,7 @@ const seededRight: RetroItem[] = [
     ts: Date.now() - 300000
   },
   {
+    kind: "item",
     id: "right-2",
     text: "Support tickets down 18%",
     votes: 1,
@@ -33,6 +84,7 @@ const seededRight: RetroItem[] = [
     ts: Date.now() - 240000
   },
   {
+    kind: "item",
     id: "right-3",
     text: "Faster code reviews",
     votes: 0,
@@ -41,8 +93,9 @@ const seededRight: RetroItem[] = [
   }
 ];
 
-const seededWrong: RetroItem[] = [
+const seededWrong: RetroEntry[] = [
   {
+    kind: "item",
     id: "wrong-1",
     text: "Build flakiness on CI",
     votes: 3,
@@ -50,6 +103,7 @@ const seededWrong: RetroItem[] = [
     ts: Date.now() - 360000
   },
   {
+    kind: "item",
     id: "wrong-2",
     text: "Late scope changes",
     votes: 1,
@@ -57,6 +111,7 @@ const seededWrong: RetroItem[] = [
     ts: Date.now() - 200000
   },
   {
+    kind: "item",
     id: "wrong-3",
     text: "Missing handover docs",
     votes: 0,
@@ -65,36 +120,50 @@ const seededWrong: RetroItem[] = [
   }
 ];
 
-const sortItems = (items: RetroItem[]) => [...items].sort((a, b) => b.votes - a.votes || b.ts - a.ts);
+const sortEntries = (entries: RetroEntry[]) =>
+  [...entries].sort((a, b) => b.votes - a.votes || b.ts - a.ts);
 
 export default function Home() {
   const [wentRightInput, setWentRightInput] = useState("");
   const [wentWrongInput, setWentWrongInput] = useState("");
-  const [wentRightItems, setWentRightItems] = useState<RetroItem[]>(seededRight);
-  const [wentWrongItems, setWentWrongItems] = useState<RetroItem[]>(seededWrong);
+  const [wentRightItems, setWentRightItems] = useState<RetroEntry[]>(seededRight);
+  const [wentWrongItems, setWentWrongItems] = useState<RetroEntry[]>(seededWrong);
+  const [dragging, setDragging] = useState<DragState | null>(null);
+  const [pendingGroup, setPendingGroup] = useState<PendingGroup | null>(null);
+  const [groupNameInput, setGroupNameInput] = useState("");
+
+  const sortedRight = useMemo(() => sortEntries(wentRightItems), [wentRightItems]);
+  const sortedWrong = useMemo(() => sortEntries(wentWrongItems), [wentWrongItems]);
 
   const addWentRight = () => {
     const next = wentRightInput.trim();
     if (!next) return;
-    setWentRightItems((current) => [
-      ...current,
-      { id: `right-${Date.now()}`, text: next, votes: 0, voted: false, ts: Date.now() }
-    ]);
+    addStandaloneItem("right", next);
     setWentRightInput("");
   };
 
   const addWentWrong = () => {
     const next = wentWrongInput.trim();
     if (!next) return;
-    setWentWrongItems((current) => [
-      ...current,
-      { id: `wrong-${Date.now()}`, text: next, votes: 0, voted: false, ts: Date.now() }
-    ]);
+    addStandaloneItem("wrong", next);
     setWentWrongInput("");
   };
 
-  const toggleVote = (side: "right" | "wrong", id: string) => {
-    const update = (items: RetroItem[]) =>
+  const addStandaloneItem = (side: Side, text: string) => {
+    const nextItem: ItemEntry = {
+      kind: "item",
+      id: `${side}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      text,
+      votes: 0,
+      voted: false,
+      ts: Date.now()
+    };
+    if (side === "right") setWentRightItems((current) => [...current, nextItem]);
+    if (side === "wrong") setWentWrongItems((current) => [...current, nextItem]);
+  };
+
+  const toggleVote = (side: Side, id: string) => {
+    const update = (items: RetroEntry[]) =>
       items.map((item) => {
         if (item.id !== id) return item;
         const voted = !item.voted;
@@ -105,13 +174,258 @@ export default function Home() {
     if (side === "wrong") setWentWrongItems((current) => update(current));
   };
 
-  const removeItem = (side: "right" | "wrong", id: string) => {
-    if (side === "right") setWentRightItems((current) => current.filter((item) => item.id !== id));
-    if (side === "wrong") setWentWrongItems((current) => current.filter((item) => item.id !== id));
+  const removeItem = (side: Side, id: string) => {
+    const applyRemove = (items: RetroEntry[]) => {
+      const target = items.find((item) => item.id === id);
+      if (!target) return items;
+
+      if (target.kind === "item") {
+        return items.filter((item) => item.id !== id);
+      }
+
+      const restoredItems: ItemEntry[] = target.items.map((groupedItem) => ({
+        kind: "item",
+        id: `${side}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        text: groupedItem.text,
+        votes: 0,
+        voted: false,
+        ts: Date.now()
+      }));
+
+      const withoutGroup = items.filter((item) => item.id !== id);
+      return [...withoutGroup, ...restoredItems];
+    };
+
+    if (side === "right") setWentRightItems((current) => applyRemove(current));
+    if (side === "wrong") setWentWrongItems((current) => applyRemove(current));
+  };
+
+  const groupItemsInSide = (side: Side, sourceId: string, targetId: string, groupName: string) => {
+    const applyGroup = (items: RetroEntry[]) => {
+      const sourceEntry = items.find((item) => item.id === sourceId);
+      const targetEntry = items.find((item) => item.id === targetId);
+
+      if (!sourceEntry || !targetEntry) return items;
+      if (sourceEntry.kind !== "item" || targetEntry.kind !== "item") return items;
+
+      const nextGroup: GroupEntry = {
+        kind: "group",
+        id: `group-${Date.now()}`,
+        name: groupName,
+        items: [
+          { id: targetEntry.id, text: targetEntry.text },
+          { id: sourceEntry.id, text: sourceEntry.text }
+        ],
+        votes: 0,
+        voted: false,
+        ts: Date.now()
+      };
+
+      const filtered = items.filter((item) => item.id !== sourceId && item.id !== targetId);
+      return [...filtered, nextGroup];
+    };
+
+    if (side === "right") setWentRightItems((current) => applyGroup(current));
+    if (side === "wrong") setWentWrongItems((current) => applyGroup(current));
+  };
+
+  const addItemToExistingGroup = (side: Side, sourceId: string, targetGroupId: string) => {
+    const applyAdd = (items: RetroEntry[]) => {
+      const sourceEntry = items.find((item) => item.id === sourceId);
+      const targetEntry = items.find((item) => item.id === targetGroupId);
+
+      if (!sourceEntry || !targetEntry) return items;
+      if (sourceEntry.kind !== "item" || targetEntry.kind !== "group") return items;
+
+      const filtered = items.filter((item) => item.id !== sourceId);
+      return filtered.map((item) => {
+        if (item.id !== targetGroupId || item.kind !== "group") return item;
+        return {
+          ...item,
+          items: [...item.items, { id: sourceEntry.id, text: sourceEntry.text }]
+        };
+      });
+    };
+
+    if (side === "right") setWentRightItems((current) => applyAdd(current));
+    if (side === "wrong") setWentWrongItems((current) => applyAdd(current));
+  };
+
+  const moveItemAcrossSides = (sourceSide: Side, targetSide: Side, sourceId: string) => {
+    const sourceItems = sourceSide === "right" ? wentRightItems : wentWrongItems;
+    const moved = sourceItems.find((entry) => entry.id === sourceId);
+    if (!moved || moved.kind !== "item") return;
+
+    if (sourceSide === "right") {
+      setWentRightItems((current) => current.filter((entry) => entry.id !== sourceId));
+    } else {
+      setWentWrongItems((current) => current.filter((entry) => entry.id !== sourceId));
+    }
+
+    addStandaloneItem(targetSide, moved.text);
+  };
+
+  const extractGroupedItem = (sourceSide: Side, groupId: string, itemId: string): string | null => {
+    const sourceItems = sourceSide === "right" ? wentRightItems : wentWrongItems;
+    const targetGroup = sourceItems.find((entry) => entry.id === groupId);
+    if (!targetGroup || targetGroup.kind !== "group") return null;
+
+    const extracted = targetGroup.items.find((entry) => entry.id === itemId);
+    if (!extracted) return null;
+
+    const remainingItems = targetGroup.items.filter((entry) => entry.id !== itemId);
+
+    const nextEntries: RetroEntry[] = [];
+    for (const entry of sourceItems) {
+      if (entry.id !== groupId) {
+        nextEntries.push(entry);
+        continue;
+      }
+
+      if (remainingItems.length >= 2) {
+        nextEntries.push({ ...entry, items: remainingItems });
+        continue;
+      }
+
+      if (remainingItems.length === 1) {
+        nextEntries.push({
+          kind: "item",
+          id: `${sourceSide}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          text: remainingItems[0].text,
+          votes: 0,
+          voted: false,
+          ts: Date.now()
+        });
+      }
+    }
+
+    if (sourceSide === "right") setWentRightItems(nextEntries);
+    if (sourceSide === "wrong") setWentWrongItems(nextEntries);
+
+    return extracted.text;
+  };
+
+  const undoGroupedItem = (side: Side, groupId: string, itemId: string) => {
+    const text = extractGroupedItem(side, groupId, itemId);
+    if (!text) return;
+    addStandaloneItem(side, text);
+  };
+
+  const handleDropOnItem = (targetSide: Side, targetId: string) => {
+    if (!dragging) return;
+
+    if (dragging.kind === "grouped-item") {
+      const text = extractGroupedItem(dragging.sourceSide, dragging.groupId, dragging.itemId);
+      if (!text) {
+        setDragging(null);
+        return;
+      }
+      addStandaloneItem(targetSide, text);
+      setDragging(null);
+      return;
+    }
+
+    if (dragging.sourceSide === targetSide) {
+      if (dragging.id === targetId) {
+        setDragging(null);
+        return;
+      }
+
+      const targetItems = targetSide === "right" ? wentRightItems : wentWrongItems;
+      const targetEntry = targetItems.find((entry) => entry.id === targetId);
+      if (targetEntry?.kind === "group") {
+        addItemToExistingGroup(targetSide, dragging.id, targetId);
+        setDragging(null);
+        return;
+      }
+
+      setPendingGroup({ side: targetSide, sourceId: dragging.id, targetId });
+      setGroupNameInput("New group");
+      setDragging(null);
+      return;
+    }
+
+    moveItemAcrossSides(dragging.sourceSide, targetSide, dragging.id);
+    setDragging(null);
+  };
+
+  const createPendingGroup = () => {
+    if (!pendingGroup) return;
+    const nextName = groupNameInput.trim();
+    if (!nextName) return;
+    groupItemsInSide(pendingGroup.side, pendingGroup.sourceId, pendingGroup.targetId, nextName);
+    setPendingGroup(null);
+    setGroupNameInput("");
+  };
+
+  const handleDropOnPanel = (targetSide: Side) => {
+    if (!dragging) return;
+
+    if (dragging.kind === "grouped-item") {
+      const text = extractGroupedItem(dragging.sourceSide, dragging.groupId, dragging.itemId);
+      if (!text) {
+        setDragging(null);
+        return;
+      }
+      addStandaloneItem(targetSide, text);
+      setDragging(null);
+      return;
+    }
+
+    if (dragging.sourceSide === targetSide) return;
+
+    moveItemAcrossSides(dragging.sourceSide, targetSide, dragging.id);
+    setDragging(null);
   };
 
   return (
     <main className="mx-auto my-12 max-w-[980px] px-7 max-[840px]:my-7">
+      <Dialog
+        open={Boolean(pendingGroup)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingGroup(null);
+            setGroupNameInput("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Name New Group</DialogTitle>
+            <DialogDescription>Choose a name for the merged card.</DialogDescription>
+          </DialogHeader>
+          <input
+            className="mt-4 block h-[42px] w-full rounded-[10px] border border-black/6 bg-white/45 px-3 text-[#565b62] placeholder:text-[#9aa0a6]"
+            type="text"
+            placeholder="Group name"
+            value={groupNameInput}
+            onChange={(event) => setGroupNameInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                createPendingGroup();
+              }
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPendingGroup(null);
+                setGroupNameInput("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={createPendingGroup}>
+              Create Group
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <header className="mb-7 flex items-center justify-between text-sm text-[#6f757d]">
         <div className="flex items-center gap-[18px]">
           <span className="inline-flex items-center gap-2 rounded-full border border-black/6 bg-white/35 px-3 py-2 text-[#5f656d] backdrop-blur-md before:size-1.5 before:rounded-full before:bg-[#c9ccd1] before:content-['']">
@@ -133,7 +447,14 @@ export default function Home() {
       </section>
 
       <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
-        <section className="relative min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:min-h-[200px]">
+        <section
+          className="relative min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:min-h-[200px]"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            handleDropOnPanel("right");
+          }}
+        >
           <h2 className="m-0 text-lg font-medium text-[#51555b]">What went right</h2>
           <div className="mt-[14px]">
             <div className="relative">
@@ -164,12 +485,72 @@ export default function Home() {
             </div>
           </div>
           <ul className="mt-[14px] flex list-none flex-col gap-2.5 p-0" aria-label="What went right list">
-            {sortItems(wentRightItems).map((item) => (
+            {sortedRight.map((item) => (
               <li
                 key={item.id}
-                className="flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a]"
+                draggable={item.kind === "item"}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData("text/plain", item.id);
+                  event.dataTransfer.effectAllowed = "move";
+                  setDragging({ sourceSide: "right", kind: "entry-item", id: item.id });
+                }}
+                onDragEnd={() => setDragging(null)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleDropOnItem("right", item.id);
+                }}
+                className={`flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
+                  item.kind === "item" ? "cursor-grab active:cursor-grabbing" : ""
+                }`}
               >
-                <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">{item.text}</span>
+                {item.kind === "item" ? (
+                  <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">{item.text}</span>
+                ) : (
+                  <span className="min-w-full flex-1 pr-1.5 leading-[1.35]">
+                    <strong className="mb-1 block">{item.name}</strong>
+                    <ul className="space-y-1.5 pl-0">
+                      {item.items.map((groupedItem) => (
+                        <li
+                          key={groupedItem.id}
+                          draggable
+                          onDragStart={(event) => {
+                            event.dataTransfer.setData("text/plain", groupedItem.id);
+                            event.dataTransfer.effectAllowed = "move";
+                            setDragging({
+                              sourceSide: "right",
+                              kind: "grouped-item",
+                              groupId: item.id,
+                              itemId: groupedItem.id
+                            });
+                          }}
+                          onDragEnd={() => setDragging(null)}
+                          className="flex cursor-grab items-center justify-between gap-2 rounded-[10px] border border-black/6 bg-white/50 px-2.5 py-1.5 text-[13px] text-[#565b62] active:cursor-grabbing"
+                          title="Drag out to ungroup"
+                        >
+                          <span>{groupedItem.text}</span>
+                          <button
+                            type="button"
+                            aria-label="Undo from group"
+                            title="Undo from group"
+                            className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-black/6 bg-white/65 text-[#6a7078]"
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              undoGroupedItem("right", item.id, groupedItem.id);
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-none stroke-current stroke-[2]">
+                              <path d="M9 7 5 11l4 4" />
+                              <path d="M5 11h7a5 5 0 1 1 0 10h-3" />
+                            </svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </span>
+                )}
                 <span className="ml-auto inline-flex items-center gap-2">
                   <span className="min-w-5 text-right text-xs text-[#7a8088]">{item.votes}</span>
                   <button
@@ -197,7 +578,14 @@ export default function Home() {
           </ul>
         </section>
 
-        <section className="relative min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:min-h-[200px]">
+        <section
+          className="relative min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:min-h-[200px]"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            handleDropOnPanel("wrong");
+          }}
+        >
           <h2 className="m-0 text-lg font-medium text-[#51555b]">What went wrong</h2>
           <div className="mt-[14px]">
             <div className="relative">
@@ -228,12 +616,72 @@ export default function Home() {
             </div>
           </div>
           <ul className="mt-[14px] flex list-none flex-col gap-2.5 p-0" aria-label="What went wrong list">
-            {sortItems(wentWrongItems).map((item) => (
+            {sortedWrong.map((item) => (
               <li
                 key={item.id}
-                className="flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a]"
+                draggable={item.kind === "item"}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData("text/plain", item.id);
+                  event.dataTransfer.effectAllowed = "move";
+                  setDragging({ sourceSide: "wrong", kind: "entry-item", id: item.id });
+                }}
+                onDragEnd={() => setDragging(null)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleDropOnItem("wrong", item.id);
+                }}
+                className={`flex flex-wrap items-center gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3 text-sm text-[#4f545a] ${
+                  item.kind === "item" ? "cursor-grab active:cursor-grabbing" : ""
+                }`}
               >
-                <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">{item.text}</span>
+                {item.kind === "item" ? (
+                  <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">{item.text}</span>
+                ) : (
+                  <span className="min-w-full flex-1 pr-1.5 leading-[1.35]">
+                    <strong className="mb-1 block">{item.name}</strong>
+                    <ul className="space-y-1.5 pl-0">
+                      {item.items.map((groupedItem) => (
+                        <li
+                          key={groupedItem.id}
+                          draggable
+                          onDragStart={(event) => {
+                            event.dataTransfer.setData("text/plain", groupedItem.id);
+                            event.dataTransfer.effectAllowed = "move";
+                            setDragging({
+                              sourceSide: "wrong",
+                              kind: "grouped-item",
+                              groupId: item.id,
+                              itemId: groupedItem.id
+                            });
+                          }}
+                          onDragEnd={() => setDragging(null)}
+                          className="flex cursor-grab items-center justify-between gap-2 rounded-[10px] border border-black/6 bg-white/50 px-2.5 py-1.5 text-[13px] text-[#565b62] active:cursor-grabbing"
+                          title="Drag out to ungroup"
+                        >
+                          <span>{groupedItem.text}</span>
+                          <button
+                            type="button"
+                            aria-label="Undo from group"
+                            title="Undo from group"
+                            className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-black/6 bg-white/65 text-[#6a7078]"
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              undoGroupedItem("wrong", item.id, groupedItem.id);
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-none stroke-current stroke-[2]">
+                              <path d="M9 7 5 11l4 4" />
+                              <path d="M5 11h7a5 5 0 1 1 0 10h-3" />
+                            </svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </span>
+                )}
                 <span className="ml-auto inline-flex items-center gap-2">
                   <span className="min-w-5 text-right text-xs text-[#7a8088]">{item.votes}</span>
                   <button
