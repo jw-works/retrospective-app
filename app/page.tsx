@@ -10,6 +10,15 @@ import {
   DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
+import {
+  buildDiscussionQueue,
+  sortEntries,
+  type DiscussionTopic,
+  type GroupEntry,
+  type ItemEntry,
+  type RetroEntry,
+  type Side
+} from "@/lib/discussion";
 
 const people = [
   { name: "Annabel", online: true },
@@ -17,34 +26,6 @@ const people = [
   { name: "Priya", online: false },
   { name: "Sam", online: false }
 ];
-
-type Side = "right" | "wrong";
-
-type RetroItem = {
-  id: string;
-  text: string;
-};
-
-type ItemEntry = {
-  kind: "item";
-  id: string;
-  text: string;
-  votes: number;
-  voted: boolean;
-  ts: number;
-};
-
-type GroupEntry = {
-  kind: "group";
-  id: string;
-  name: string;
-  items: RetroItem[];
-  votes: number;
-  voted: boolean;
-  ts: number;
-};
-
-type RetroEntry = ItemEntry | GroupEntry;
 
 type DragState = {
   sourceSide: Side;
@@ -120,9 +101,6 @@ const seededWrong: RetroEntry[] = [
   }
 ];
 
-const sortEntries = (entries: RetroEntry[]) =>
-  [...entries].sort((a, b) => b.votes - a.votes || b.ts - a.ts);
-
 export default function Home() {
   const [wentRightInput, setWentRightInput] = useState("");
   const [wentWrongInput, setWentWrongInput] = useState("");
@@ -131,9 +109,17 @@ export default function Home() {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [pendingGroup, setPendingGroup] = useState<PendingGroup | null>(null);
   const [groupNameInput, setGroupNameInput] = useState("");
+  const [discussionMode, setDiscussionMode] = useState(false);
+  const [discussionQueue, setDiscussionQueue] = useState<DiscussionTopic[]>([]);
+  const [discussionIndex, setDiscussionIndex] = useState(0);
+  const [happinessMode, setHappinessMode] = useState(false);
+  const [happinessScore, setHappinessScore] = useState(7);
+  const [happinessSubmitted, setHappinessSubmitted] = useState(false);
 
   const sortedRight = useMemo(() => sortEntries(wentRightItems), [wentRightItems]);
   const sortedWrong = useMemo(() => sortEntries(wentWrongItems), [wentWrongItems]);
+  const hasDiscussionItems = wentRightItems.length + wentWrongItems.length > 0;
+  const currentDiscussion = discussionQueue[discussionIndex];
 
   const addWentRight = () => {
     const next = wentRightInput.trim();
@@ -378,6 +364,30 @@ export default function Home() {
     setDragging(null);
   };
 
+  const startDiscussion = () => {
+    const queue = buildDiscussionQueue(wentRightItems, wentWrongItems);
+    if (!queue.length) return;
+    setDiscussionQueue(queue);
+    setDiscussionIndex(0);
+    setHappinessMode(false);
+    setHappinessSubmitted(false);
+    setDiscussionMode(true);
+  };
+
+  const nextDiscussion = () => {
+    if (discussionIndex >= discussionQueue.length - 1) return;
+    setDiscussionIndex((index) => index + 1);
+  };
+
+  const previousDiscussion = () => {
+    if (discussionIndex === 0) return;
+    setDiscussionIndex((index) => index - 1);
+  };
+
+  const finishDiscussion = () => {
+    setHappinessMode(true);
+  };
+
   return (
     <main className="mx-auto my-12 max-w-[980px] px-7 max-[840px]:my-7">
       <Dialog
@@ -444,9 +454,121 @@ export default function Home() {
         <p className="mt-2.5 text-lg text-[#6f757d]">
           Capture what went right, what went wrong, and who&apos;s online.
         </p>
+        {!discussionMode ? (
+          <div className="mt-5">
+            <Button type="button" onClick={startDiscussion} disabled={!hasDiscussionItems}>
+              Start Discussion
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-5 flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => setDiscussionMode(false)}>
+              Back To Board
+            </Button>
+            <span className="text-sm text-[#7a8088]">
+              {happinessMode
+                ? "Happiness Check"
+                : discussionQueue.length
+                  ? `${discussionIndex + 1}/${discussionQueue.length}`
+                  : "0/0"}
+            </span>
+          </div>
+        )}
       </section>
 
       <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
+        {discussionMode ? (
+          <section className="relative col-span-2 min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:col-span-1 max-[840px]:min-h-[200px]">
+            <div className="relative z-10 min-h-[280px]">
+              {happinessMode ? (
+                <div className="max-w-xl">
+                  <p className="text-sm text-[#7a8088]">Session complete</p>
+                  <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-[#3a3d41]">Happiness Check</h2>
+                  <p className="mt-2 text-sm text-[#6f757d]">
+                    How do you feel about this retrospective session?
+                  </p>
+                  <div className="mt-5">
+                    <label htmlFor="happiness" className="mb-2 block text-sm text-[#565b62]">
+                      Team happiness: {happinessScore}/5
+                    </label>
+                    <input
+                      id="happiness"
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={happinessScore}
+                      onChange={(event) => setHappinessScore(Number(event.target.value))}
+                      className="w-full accent-neutral-700"
+                    />
+                    <div className="mt-1 flex justify-between text-xs text-[#7a8088]">
+                      <span>1</span>
+                      <span>2</span>
+                      <span>3</span>
+                      <span>4</span>
+                      <span>5</span>
+                      <span>6</span>
+                      <span>7</span>
+                      <span>8</span>
+                      <span>9</span>
+                      <span>10</span>
+                    </div>
+                  </div>
+                  {!happinessSubmitted ? (
+                    <div className="mt-5">
+                      <Button type="button" onClick={() => setHappinessSubmitted(true)}>
+                        Submit Check
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="mt-5 text-sm text-[#565b62]">Thanks. Happiness score recorded.</p>
+                  )}
+                </div>
+              ) : currentDiscussion ? (
+                <>
+                  <p className="text-sm text-[#7a8088]">
+                    {currentDiscussion.side === "right" ? "What went right" : "What went wrong"} ·{" "}
+                    {currentDiscussion.votes} votes
+                  </p>
+                  <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-[#3a3d41]">
+                    {currentDiscussion.title}
+                  </h2>
+                  {currentDiscussion.kind === "group" ? (
+                    <ul className="mt-4 flex list-none flex-col gap-2 p-0">
+                      {currentDiscussion.items.map((item, index) => (
+                        <li
+                          key={`${currentDiscussion.id}-${index}`}
+                          className="rounded-[12px] border border-black/6 bg-white/45 px-3 py-2 text-sm text-[#565b62]"
+                        >
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-sm text-[#7a8088]">No topics available yet.</p>
+              )}
+
+              {!happinessMode && currentDiscussion ? (
+                <div className="absolute right-0 bottom-0 flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={previousDiscussion} disabled={discussionIndex === 0}>
+                    Previous
+                  </Button>
+                  {discussionIndex >= discussionQueue.length - 1 ? (
+                    <Button type="button" onClick={finishDiscussion}>
+                      Finish
+                    </Button>
+                  ) : (
+                    <Button type="button" onClick={nextDiscussion}>
+                      Next Topic
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : (
+          <>
         <section
           className="relative min-h-[220px] overflow-hidden rounded-[18px] border border-black/6 bg-[#eeeeef] p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-[''] max-[840px]:min-h-[200px]"
           onDragOver={(event) => event.preventDefault()}
@@ -708,6 +830,8 @@ export default function Home() {
             ))}
           </ul>
         </section>
+          </>
+        )}
 
         <aside className="flex flex-col gap-4">
           <section className="relative overflow-hidden rounded-2xl border border-black/6 bg-[#eeeeef] p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-['']">
