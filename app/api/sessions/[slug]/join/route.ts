@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
 import { mapErrorToResponse } from "@/lib/backend/http";
 
+// Participant join endpoint for invite flows.
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;

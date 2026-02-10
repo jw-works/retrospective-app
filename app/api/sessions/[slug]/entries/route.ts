@@ -3,6 +3,7 @@ import { backendStore } from "@/lib/backend/store";
 import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
 import type { EntryType } from "@/lib/backend/types";
 
+// Handles entry creation and admin "clear all entries" action.
 const entryTypes: EntryType[] = ["went_right", "went_wrong"];
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {

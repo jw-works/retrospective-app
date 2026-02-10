@@ -1,5 +1,6 @@
 import type { EntryType, Section, SessionStateResponse } from "@/lib/backend/types";
 
+// Frontend API client for all session mutations/queries used by app/page.tsx.
 type ApiError = { error?: string };
 
 export type CreateSessionResult = {

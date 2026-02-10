@@ -3,6 +3,7 @@ import { backendStore } from "@/lib/backend/store";
 import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
 import type { EntryType } from "@/lib/backend/types";
 
+// Moves an entry between "went right" and "went wrong" columns.
 const entryTypes: EntryType[] = ["went_right", "went_wrong"];
 
 export async function POST(

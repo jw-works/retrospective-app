@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
 import { mapErrorToResponse } from "@/lib/backend/http";
 
+// Session bootstrap endpoint: creates session + admin participant + auth token.
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { title?: string; adminName?: string };

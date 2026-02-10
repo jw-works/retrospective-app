@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
 import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
+// Removes the viewer's vote for one entry.
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ slug: string; entryId: string }> }

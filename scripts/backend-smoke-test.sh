@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# End-to-end smoke test for backend session flows and core permission rules.
 set -euo pipefail
 
 PORT="${PORT:-4020}"

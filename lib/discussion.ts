@@ -1,3 +1,4 @@
+// Pure frontend shaping/sorting logic for discussion sequencing.
 export type Side = "right" | "wrong";
 
 export type RetroItem = {

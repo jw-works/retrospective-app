@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
 import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
+// Adds one existing entry into an existing group.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string; groupId: string }> }

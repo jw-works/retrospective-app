@@ -16,6 +16,8 @@ import type {
   Vote
 } from "@/lib/backend/types";
 
+// File-backed store implementing business rules for sessions, entries, voting,
+// grouping, navigation, and happiness checks.
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "retro-store.json");
 const VOTE_LIMIT_PER_PARTICIPANT = 5;
@@ -199,6 +201,7 @@ function sessionStateFromStore(store: StoreData, session: Session, viewer: Parti
 }
 
 export const backendStore = {
+  // Creates a session, admin participant, initial navigation state, and token.
   async createSession(input: { title: string; adminName: string }) {
     return withStoreLock((store) => {
       const now = nowIso();
@@ -248,6 +251,7 @@ export const backendStore = {
     });
   },
 
+  // Adds a non-admin participant and returns their auth token.
   async joinSession(input: { slug: string; name: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -276,6 +280,7 @@ export const backendStore = {
     });
   },
 
+  // Returns the read model consumed by the frontend.
   async getSessionState(input: { slug: string; token?: string | null }) {
     const store = await readStore();
     const session = getSessionBySlug(store, input.slug);
@@ -289,6 +294,7 @@ export const backendStore = {
     return sessionStateFromStore(store, session, viewer);
   },
 
+  // Creates a single entry on either side of the board.
   async createEntry(input: { slug: string; token: string; type: EntryType; content: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -313,6 +319,7 @@ export const backendStore = {
     });
   },
 
+  // Deletes one entry with permission checks (admin or author).
   async deleteEntry(input: { slug: string; token: string; entryId: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -335,6 +342,7 @@ export const backendStore = {
     });
   },
 
+  // Admin-only bulk clear for session entries/groups/votes.
   async clearEntries(input: { slug: string; token: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -353,6 +361,7 @@ export const backendStore = {
     });
   },
 
+  // Adds a vote and enforces per-participant vote limit.
   async addVote(input: { slug: string; token: string; entryId: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -388,6 +397,7 @@ export const backendStore = {
     });
   },
 
+  // Removes the current participant's vote from one entry.
   async removeVote(input: { slug: string; token: string; entryId: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -406,6 +416,7 @@ export const backendStore = {
     });
   },
 
+  // Saves or updates one participant's happiness score.
   async upsertHappiness(input: { slug: string; token: string; score: number }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -437,6 +448,7 @@ export const backendStore = {
     });
   },
 
+  // Creates a new group from two standalone entries.
   async createGroup(input: {
     slug: string;
     token: string;
@@ -471,6 +483,7 @@ export const backendStore = {
     });
   },
 
+  // Adds a standalone entry to an existing group.
   async addEntryToGroup(input: { slug: string; token: string; groupId: string; entryId: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -490,6 +503,7 @@ export const backendStore = {
     });
   },
 
+  // Removes one entry from a group, auto-cleaning undersized groups.
   async ungroupEntry(input: { slug: string; token: string; entryId: string }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -508,6 +522,7 @@ export const backendStore = {
     });
   },
 
+  // Moves an entry between sides; grouped entries are detached first.
   async moveEntry(input: { slug: string; token: string; entryId: string; type: EntryType }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);
@@ -528,6 +543,7 @@ export const backendStore = {
     });
   },
 
+  // Admin-only shared navigation update for all participants.
   async setNavigation(input: { slug: string; token: string; activeSection: Section; discussionEntryId?: string | null }) {
     return withStoreLock((store) => {
       const session = getSessionBySlug(store, input.slug);

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { RetroEntry, Side } from "@/lib/discussion";
 
+// Reusable board column used by both "went right" and "went wrong" sections.
+// The parent owns state and passes callbacks for mutation/drag/drop behaviors.
 type RetroColumnProps = {
   side: Side;
   title: string;

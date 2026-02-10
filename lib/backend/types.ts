@@ -1,3 +1,7 @@
+// Shared domain types used by:
+// - backend store and API routes (source of truth),
+// - frontend API client typing,
+// - UI state transformations.
 export type SessionPhase = "collecting" | "discussing" | "finished";
 
 export type Section = "retro" | "discussion" | "happiness" | "done";

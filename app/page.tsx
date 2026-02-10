@@ -46,6 +46,7 @@ import {
   setStoredToken,
 } from "@/lib/retro/session-storage";
 
+// Tracks currently dragged object for grouping/moving interactions.
 type DragState = {
   sourceSide: Side;
 } & (
@@ -68,6 +69,11 @@ type PendingGroup = {
 
 const THEME_KEY = "retro.theme";
 
+// Main application orchestrator:
+// - bootstraps/joins sessions,
+// - polls shared state,
+// - dispatches backend mutations,
+// - renders setup, board, discussion, and happiness flows.
 export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -204,6 +210,7 @@ export default function Home() {
             ? { emoji: "🙂", label: "Good" }
             : { emoji: "😄", label: "Great" };
 
+  // Normalizes server state into the local UI model.
   const applySessionState = useCallback((state: SessionStateResponse) => {
     setSessionState(state);
     setTeamName(state.session.title);
@@ -228,6 +235,7 @@ export default function Home() {
     setHappinessMode(state.navigation.activeSection === "happiness" || state.navigation.activeSection === "done");
   }, []);
 
+  // Single read path used for initial load and polling refreshes.
   const loadSessionState = useCallback(
     async (slug: string, token: string) => {
       const state = await getSessionState(slug, token);
@@ -236,6 +244,7 @@ export default function Home() {
     [applySessionState],
   );
 
+  // Mutation helper that always refreshes canonical session state after writes.
   const runMutation = useCallback(
     async (mutation: () => Promise<void>) => {
       if (!sessionSlug || !participantToken)
@@ -246,6 +255,7 @@ export default function Home() {
     [loadSessionState, participantToken, sessionSlug],
   );
 
+  // Clears in-memory and persisted credentials when session is finished/ended.
   const resetToCreateSession = useCallback(() => {
     if (sessionSlug) {
       clearStoredToken(sessionSlug);

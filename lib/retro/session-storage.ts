@@ -1,3 +1,4 @@
+// Browser storage helpers for active session and participant tokens.
 export const ACTIVE_SLUG_KEY = "retro.activeSlug";
 
 export function tokenKey(slug: string) {

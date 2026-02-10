@@ -1,6 +1,7 @@
 import type { RetroEntry } from "@/lib/discussion";
 import type { SessionStateResponse } from "@/lib/backend/types";
 
+// Frontend utility helpers for parsing join links, avatars, and entry shaping.
 type SessionEntry = SessionStateResponse["entries"][number];
 
 export function parseSessionCode(input: string): string {

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+// Share-link join route; forwards to home with join query parameter.
 export default async function JoinRedirectPage({
   params,
 }: {

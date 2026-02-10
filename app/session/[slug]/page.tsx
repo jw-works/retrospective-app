@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+// Redirects route-style links to the single shared page model.
 export default async function SessionRedirectPage({
   params,
 }: {

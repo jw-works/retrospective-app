@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
 import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
+// Creates a new group by merging two standalone entries on the same side.
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;

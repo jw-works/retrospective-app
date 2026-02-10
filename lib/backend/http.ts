@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+// Route-level HTTP helpers that keep error handling consistent across endpoints.
 export type ApiErrorCode = 400 | 401 | 403 | 404 | 409;
 
 export function jsonError(message: string, status: ApiErrorCode = 400) {
