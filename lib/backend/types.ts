@@ -87,7 +87,10 @@ export type StoreData = {
   authTokens: AuthToken[];
 };
 
-export type PublicParticipant = Pick<Participant, "id" | "name" | "isAdmin" | "createdAt">;
+export type PublicParticipant = Pick<Participant, "id" | "name" | "isAdmin" | "createdAt"> & {
+  votesUsed: number;
+  votesRemaining: number;
+};
 
 export type SessionViewer = {
   id: string;

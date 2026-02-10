@@ -188,6 +188,24 @@
       "phase": "finished",
       "createdAt": "2026-02-10T17:03:50.347Z",
       "updatedAt": "2026-02-10T17:09:39.257Z"
+    },
+    {
+      "id": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "slug": "justforfix-xe88ll",
+      "title": "justforfix",
+      "createdByParticipantId": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "phase": "finished",
+      "createdAt": "2026-02-10T19:16:36.452Z",
+      "updatedAt": "2026-02-10T19:27:11.300Z"
+    },
+    {
+      "id": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "slug": "justforfix-p0m04x",
+      "title": "justforfix",
+      "createdByParticipantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "phase": "finished",
+      "createdAt": "2026-02-10T19:27:12.714Z",
+      "updatedAt": "2026-02-10T19:37:38.268Z"
     }
   ],
   "participants": [
@@ -421,6 +439,34 @@
       "name": "Chris Cole",
       "isAdmin": true,
       "createdAt": "2026-02-10T17:03:50.347Z"
+    },
+    {
+      "id": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "name": "chric cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T19:16:36.452Z"
+    },
+    {
+      "id": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "name": "chric cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T19:27:12.714Z"
+    },
+    {
+      "id": "420c1ec0-bbfe-4a44-8068-28a4979eb955",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "name": "Conor Shand",
+      "isAdmin": false,
+      "createdAt": "2026-02-10T19:33:40.850Z"
+    },
+    {
+      "id": "3d758a7b-a371-433e-9985-ebb71e2950b4",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "name": "John Wilson",
+      "isAdmin": false,
+      "createdAt": "2026-02-10T19:35:39.995Z"
     }
   ],
   "entries": [
@@ -648,6 +694,96 @@
       "content": "Third comment",
       "groupId": "3b368512-3351-4de3-bd86-c00bbab4876d",
       "createdAt": "2026-02-10T17:01:40.174Z"
+    },
+    {
+      "id": "4176e3c5-4e8a-4e04-9bdd-781ed496750b",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "authorParticipantId": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "type": "went_right",
+      "content": "tickets are down 18 percent",
+      "groupId": "c87d4b45-be24-4502-b5d8-8190b99bb5d1",
+      "createdAt": "2026-02-10T19:17:26.568Z"
+    },
+    {
+      "id": "f0c287ba-f8b2-4274-ad97-d60aba757757",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "authorParticipantId": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "type": "went_right",
+      "content": "we were able to solve most issues",
+      "groupId": "c87d4b45-be24-4502-b5d8-8190b99bb5d1",
+      "createdAt": "2026-02-10T19:17:34.647Z"
+    },
+    {
+      "id": "3a879806-822a-45d5-8ac0-ff0c29eb9842",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "authorParticipantId": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "type": "went_right",
+      "content": "AI helped a lot",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:17:43.940Z"
+    },
+    {
+      "id": "d52f2049-48d7-45c7-a196-7a837ed51bf8",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "authorParticipantId": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "type": "went_wrong",
+      "content": "AI made mistakes",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:17:49.266Z"
+    },
+    {
+      "id": "6881ca1b-0695-4c72-8f06-b79e0e5b1a8c",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "authorParticipantId": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "type": "went_wrong",
+      "content": "Makes a lot of smaller mistakes",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:17:55.281Z"
+    },
+    {
+      "id": "231b58fc-9198-4f06-85b6-46e8e47569b5",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "authorParticipantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "type": "went_right",
+      "content": "Hello",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:27:17.744Z"
+    },
+    {
+      "id": "5a6fd29f-da21-44e8-b911-86d359f51a2f",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "authorParticipantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "type": "went_right",
+      "content": "World",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:27:19.515Z"
+    },
+    {
+      "id": "25f53fb0-89a8-483c-afe9-0ab5f4dd428a",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "authorParticipantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "type": "went_wrong",
+      "content": "Welcome",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:27:21.210Z"
+    },
+    {
+      "id": "f31d361b-6c47-4b2e-a763-bdaf0e9c44a8",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "authorParticipantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "type": "went_wrong",
+      "content": "back",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:27:22.232Z"
+    },
+    {
+      "id": "7ebaeae1-6279-4976-916d-5a50f460926a",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "authorParticipantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "type": "went_right",
+      "content": "check",
+      "groupId": null,
+      "createdAt": "2026-02-10T19:32:01.342Z"
     }
   ],
   "groups": [
@@ -678,6 +814,13 @@
       "type": "went_right",
       "name": "Group",
       "createdAt": "2026-02-10T17:01:46.258Z"
+    },
+    {
+      "id": "c87d4b45-be24-4502-b5d8-8190b99bb5d1",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "type": "went_right",
+      "name": "Fast Resolution",
+      "createdAt": "2026-02-10T19:18:41.715Z"
     }
   ],
   "votes": [
@@ -784,6 +927,118 @@
       "participantId": "56d085b3-259d-4477-bc19-2abb6803b65d",
       "value": 1,
       "createdAt": "2026-02-10T16:42:08.882Z"
+    },
+    {
+      "id": "673b077e-77a5-4dc8-96b7-fb44f0b13aae",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "5a6fd29f-da21-44e8-b911-86d359f51a2f",
+      "participantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "value": 1,
+      "createdAt": "2026-02-10T19:31:57.642Z"
+    },
+    {
+      "id": "e8722ca7-06a7-4f6e-ba31-0129d22caab3",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "231b58fc-9198-4f06-85b6-46e8e47569b5",
+      "participantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "value": 1,
+      "createdAt": "2026-02-10T19:31:58.370Z"
+    },
+    {
+      "id": "b136b005-9667-4734-83cc-691800d03a94",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "7ebaeae1-6279-4976-916d-5a50f460926a",
+      "participantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "value": 1,
+      "createdAt": "2026-02-10T19:32:02.799Z"
+    },
+    {
+      "id": "437b03f3-63d2-4031-9205-5e6c47d3c08a",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "7ebaeae1-6279-4976-916d-5a50f460926a",
+      "participantId": "420c1ec0-bbfe-4a44-8068-28a4979eb955",
+      "value": 1,
+      "createdAt": "2026-02-10T19:33:45.223Z"
+    },
+    {
+      "id": "465f3fb9-9b86-4305-9bd8-a932699030b5",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "5a6fd29f-da21-44e8-b911-86d359f51a2f",
+      "participantId": "420c1ec0-bbfe-4a44-8068-28a4979eb955",
+      "value": 1,
+      "createdAt": "2026-02-10T19:33:46.410Z"
+    },
+    {
+      "id": "fe06c60b-9dc5-4cd3-a0dc-9b6d9144f897",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "f31d361b-6c47-4b2e-a763-bdaf0e9c44a8",
+      "participantId": "420c1ec0-bbfe-4a44-8068-28a4979eb955",
+      "value": 1,
+      "createdAt": "2026-02-10T19:33:47.379Z"
+    },
+    {
+      "id": "32abfaaa-c98d-4494-8b71-a447feb76364",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "231b58fc-9198-4f06-85b6-46e8e47569b5",
+      "participantId": "420c1ec0-bbfe-4a44-8068-28a4979eb955",
+      "value": 1,
+      "createdAt": "2026-02-10T19:33:48.295Z"
+    },
+    {
+      "id": "d84dc18c-6550-4959-9f45-dc54fc043e96",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "25f53fb0-89a8-483c-afe9-0ab5f4dd428a",
+      "participantId": "420c1ec0-bbfe-4a44-8068-28a4979eb955",
+      "value": 1,
+      "createdAt": "2026-02-10T19:33:49.248Z"
+    },
+    {
+      "id": "4e3e958e-5856-4d94-a590-4200b046ac1c",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "f31d361b-6c47-4b2e-a763-bdaf0e9c44a8",
+      "participantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "value": 1,
+      "createdAt": "2026-02-10T19:37:05.083Z"
+    },
+    {
+      "id": "105a7a1e-bbca-4a87-9a15-a652ab4ea4d3",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "7ebaeae1-6279-4976-916d-5a50f460926a",
+      "participantId": "3d758a7b-a371-433e-9985-ebb71e2950b4",
+      "value": 1,
+      "createdAt": "2026-02-10T19:37:30.023Z"
+    },
+    {
+      "id": "b65c9809-0719-4a0c-957b-585926e720f6",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "5a6fd29f-da21-44e8-b911-86d359f51a2f",
+      "participantId": "3d758a7b-a371-433e-9985-ebb71e2950b4",
+      "value": 1,
+      "createdAt": "2026-02-10T19:37:30.658Z"
+    },
+    {
+      "id": "8134d1ea-58f5-4b56-b274-3d70ec639f99",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "231b58fc-9198-4f06-85b6-46e8e47569b5",
+      "participantId": "3d758a7b-a371-433e-9985-ebb71e2950b4",
+      "value": 1,
+      "createdAt": "2026-02-10T19:37:31.468Z"
+    },
+    {
+      "id": "21ba8c16-2054-4373-880a-3ed9b5b20d0a",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "f31d361b-6c47-4b2e-a763-bdaf0e9c44a8",
+      "participantId": "3d758a7b-a371-433e-9985-ebb71e2950b4",
+      "value": 1,
+      "createdAt": "2026-02-10T19:37:32.810Z"
+    },
+    {
+      "id": "a5a544e2-a5f8-4897-87ce-5cffab5e7c4a",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "entryId": "25f53fb0-89a8-483c-afe9-0ab5f4dd428a",
+      "participantId": "3d758a7b-a371-433e-9985-ebb71e2950b4",
+      "value": 1,
+      "createdAt": "2026-02-10T19:37:33.991Z"
     }
   ],
   "happinessChecks": [
@@ -882,6 +1137,38 @@
       "score": 7,
       "createdAt": "2026-02-10T17:02:04.965Z",
       "updatedAt": "2026-02-10T17:02:04.965Z"
+    },
+    {
+      "id": "63fe663a-e816-4f1f-9d64-eb9ac6788208",
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "participantId": "e96c77ec-747e-4141-b5a8-4dd296db4365",
+      "score": 7,
+      "createdAt": "2026-02-10T19:22:29.006Z",
+      "updatedAt": "2026-02-10T19:22:29.006Z"
+    },
+    {
+      "id": "c2d0cb4f-e3dd-46ef-b8a9-544b22da1ae4",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "participantId": "842c4291-d448-49d9-bbad-aac1cf068832",
+      "score": 7,
+      "createdAt": "2026-02-10T19:27:42.660Z",
+      "updatedAt": "2026-02-10T19:36:19.275Z"
+    },
+    {
+      "id": "0c84a19a-365f-4cea-a3ac-98f844e28e65",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "participantId": "420c1ec0-bbfe-4a44-8068-28a4979eb955",
+      "score": 7,
+      "createdAt": "2026-02-10T19:36:23.662Z",
+      "updatedAt": "2026-02-10T19:36:23.662Z"
+    },
+    {
+      "id": "572d5501-d477-474d-8586-906da06100da",
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "participantId": "3d758a7b-a371-433e-9985-ebb71e2950b4",
+      "score": 5,
+      "createdAt": "2026-02-10T19:36:29.788Z",
+      "updatedAt": "2026-02-10T19:36:29.788Z"
     }
   ],
   "navigation": [
@@ -1010,6 +1297,18 @@
       "activeSection": "done",
       "discussionEntryId": null,
       "updatedAt": "2026-02-10T17:09:39.257Z"
+    },
+    {
+      "sessionId": "5f07c49b-0ce3-4b04-8114-4a8621611a3c",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T19:27:11.300Z"
+    },
+    {
+      "sessionId": "e3dc3a82-0983-4ec4-b19d-cecca517a056",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T19:37:38.268Z"
     }
   ],
   "authTokens": [

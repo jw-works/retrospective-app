@@ -93,6 +93,15 @@ Open:
 
 - `http://localhost:3000`
 
+## Environment Variables
+
+- `AUTH_TOKEN_SECRET`
+: HMAC secret used to sign participant tokens. Set this in every non-local environment.
+- `AUTH_TOKEN_TTL_SECONDS` (optional)
+: Participant token lifetime in seconds. Default: `43200` (12 hours).
+- `ERROR_MONITORING_WEBHOOK_URL` (optional)
+: If set, server errors are posted as JSON payloads to this webhook in addition to structured logs.
+
 ## Testing
 
 Type check:
@@ -178,7 +187,7 @@ Persist data:
 ## Production Hardening Recommendations
 
 - Replace JSON file store with PostgreSQL/SQLite + proper migrations.
-- Replace plain auth token storage with signed/expiring tokens.
+- Rotate `AUTH_TOKEN_SECRET` periodically and keep it in your secrets manager.
 - Add server-side rate limiting for session/join/vote endpoints.
 - Add integration tests for UI flows (Playwright/Cypress).
 - Add observability (structured logs + error monitoring).

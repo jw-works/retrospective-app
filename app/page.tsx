@@ -158,6 +158,11 @@ function HomeContent() {
     (entry) => entry.id === currentDiscussionEntryId,
   );
   const isAdmin = sessionState?.viewer?.isAdmin ?? false;
+  const totalJoinees = sessionState?.participants.length ?? 0;
+  const joineesDoneVoting = (sessionState?.participants ?? []).filter(
+    (participant) => participant.votesRemaining === 0,
+  ).length;
+  const everyoneDoneVoting = totalJoinees > 0 && joineesDoneVoting >= totalJoinees;
   const viewerId = sessionState?.viewer?.id ?? "";
   const participantMap = useMemo(
     () =>
@@ -197,16 +202,18 @@ function HomeContent() {
       ),
     [adminName, sessionState?.viewer?.id, viewerName],
   );
-  const entryBadge = (entryId: string) => {
+  const entryBadge = (entryId: string, size: "sm" | "md" = "sm") => {
     const authorId = entryAuthorMap.get(entryId) ?? "";
     const authorName = participantMap.get(authorId)?.name ?? "";
     const tone = colorToneIndexFromSeed(authorId || entryId);
+    const avatarSizeClass = size === "md" ? "size-8" : "size-6";
+    const textSizeClass = size === "md" ? "text-[11px]" : "text-[10px]";
     return (
       <Avatar
-        className={`identity-badge identity-tone-${tone} size-6 shrink-0 border`}
+        className={`identity-badge identity-tone-${tone} ${avatarSizeClass} shrink-0 border`}
         title={authorName || "Unknown"}
       >
-        <AvatarFallback className="bg-transparent text-[10px] font-semibold text-inherit">
+        <AvatarFallback className={`bg-transparent ${textSizeClass} font-semibold text-inherit`}>
           {initialsFromName(authorName)}
         </AvatarFallback>
       </Avatar>
@@ -227,6 +234,11 @@ function HomeContent() {
           : happinessScore <= 8
             ? { emoji: "🙂", label: "Good" }
             : { emoji: "😄", label: "Great" };
+  const totalParticipants = sessionState?.participants.length ?? 0;
+  const submittedHappinessCount = sessionState?.happiness.count ?? 0;
+  const overallHappinessAverage = sessionState?.happiness.average ?? null;
+  const allHappinessSubmitted =
+    totalParticipants > 0 && submittedHappinessCount >= totalParticipants;
 
   // Normalizes server state into the local UI model.
   const applySessionState = useCallback((state: SessionStateResponse) => {
@@ -1074,7 +1086,7 @@ function HomeContent() {
                     onClick={startDiscussion}
                     disabled={!hasDiscussionItems || !isAdmin}
                   >
-                    Start Discussion
+                    {everyoneDoneVoting ? "Start Discussion" : "Start Discussion Anyway"}
                   </Button>
                 ) : (
                   <Button
@@ -1159,6 +1171,24 @@ function HomeContent() {
                           Thanks. Happiness score recorded.
                         </p>
                       ) : null}
+                      {allHappinessSubmitted ? (
+                        <div className="mt-5 rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
+                          <p className="text-xs tracking-[0.18em] text-retro-muted uppercase">
+                            Team Result
+                          </p>
+                          <p className="mt-2 text-2xl font-semibold text-retro-heading">
+                            {overallHappinessAverage?.toFixed(1) ?? "0.0"} / 10
+                          </p>
+                          <p className="mt-1 text-sm text-retro-muted">
+                            {submittedHappinessCount} of {totalParticipants} participants submitted.
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mt-4 text-xs text-retro-muted">
+                          Waiting for {Math.max(0, totalParticipants - submittedHappinessCount)} more participant
+                          {Math.max(0, totalParticipants - submittedHappinessCount) === 1 ? "" : "s"} to submit.
+                        </p>
+                      )}
                     </div>
                   ) : currentDiscussion ? (
                     <>
@@ -1170,7 +1200,7 @@ function HomeContent() {
                       </p>
                       <div className="mt-2 flex items-start gap-3">
                         {currentDiscussion.kind === "item" && currentDiscussionEntryId
-                          ? entryBadge(currentDiscussionEntryId)
+                          ? entryBadge(currentDiscussionEntryId, "md")
                           : null}
                         <h2 className="text-[26px] leading-[1.2] font-medium text-retro-heading">
                           {currentDiscussion.title}
@@ -1340,6 +1370,19 @@ function HomeContent() {
                   <h3 className="m-0 text-base font-medium text-retro-strong">
                     Joinees List
                   </h3>
+                  <div className="mt-2 rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2">
+                    <p className="text-xs text-retro-muted">
+                      Voting progress: {joineesDoneVoting}/{totalJoinees} done
+                    </p>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-retro-surface-soft">
+                      <div
+                        className="h-full rounded-full bg-[var(--retro-action)] transition-all"
+                        style={{
+                          width: totalJoinees > 0 ? `${(joineesDoneVoting / totalJoinees) * 100}%` : "0%"
+                        }}
+                      />
+                    </div>
+                  </div>
                   <ul
                     aria-label="Joinees list"
                     className="mt-3 flex list-none flex-col gap-2.5 p-0"
@@ -1361,10 +1404,12 @@ function HomeContent() {
                           {person.name}
                         </span>
                         {person.isAdmin ? (
+                          <span className="text-xs text-retro-muted">admin</span>
+                        ) : (
                           <span className="text-xs text-retro-muted">
-                            admin
+                            {person.votesRemaining} left
                           </span>
-                        ) : null}
+                        )}
                       </li>
                     ))}
                   </ul>

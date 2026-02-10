@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { issueParticipantToken, verifyParticipantToken } from "@/lib/backend/auth";
+import { logInfo } from "@/lib/backend/observability";
 import type {
-  AuthToken,
   Entry,
   EntryGroup,
   EntryType,
@@ -55,27 +56,42 @@ const buildSlug = (title: string) => {
 async function readStore(): Promise<StoreData> {
   await mkdir(DATA_DIR, { recursive: true });
 
-  try {
-    const raw = await readFile(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw) as Partial<StoreData>;
-    return {
-      sessions: parsed.sessions ?? [],
-      participants: parsed.participants ?? [],
-      entries: (parsed.entries ?? []).map((entry) => ({
-        ...entry,
-        groupId: entry.groupId ?? null
-      })),
-      groups: parsed.groups ?? [],
-      votes: parsed.votes ?? [],
-      happinessChecks: parsed.happinessChecks ?? [],
-      navigation: parsed.navigation ?? [],
-      authTokens: parsed.authTokens ?? []
-    };
-  } catch {
-    const initial = createInitialData();
-    await writeFile(DATA_FILE, JSON.stringify(initial, null, 2), "utf8");
-    return initial;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const raw = await readFile(DATA_FILE, "utf8");
+      const parsed = JSON.parse(raw) as Partial<StoreData>;
+      return {
+        sessions: parsed.sessions ?? [],
+        participants: parsed.participants ?? [],
+        entries: (parsed.entries ?? []).map((entry) => ({
+          ...entry,
+          groupId: entry.groupId ?? null
+        })),
+        groups: parsed.groups ?? [],
+        votes: parsed.votes ?? [],
+        happinessChecks: parsed.happinessChecks ?? [],
+        navigation: parsed.navigation ?? [],
+        authTokens: parsed.authTokens ?? []
+      };
+    } catch (error: unknown) {
+      const fsCode = typeof error === "object" && error && "code" in error ? (error as { code?: string }).code : undefined;
+      if (fsCode === "ENOENT") {
+        const initial = createInitialData();
+        await writeFile(DATA_FILE, JSON.stringify(initial, null, 2), "utf8");
+        return initial;
+      }
+
+      // A read can race a write and observe partial JSON; retry briefly.
+      if (error instanceof SyntaxError && attempt < 4) {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+        continue;
+      }
+
+      throw error;
+    }
   }
+
+  throw new Error("Unable to read store");
 }
 
 async function writeStore(next: StoreData): Promise<void> {
@@ -101,10 +117,12 @@ function getSessionBySlug(store: StoreData, slug: string) {
 }
 
 function getParticipantByToken(store: StoreData, token: string, sessionId: string): Participant {
-  const authToken = store.authTokens.find((item) => item.token === token && item.sessionId === sessionId);
-  if (!authToken) throw new Error("Unauthorized");
+  const decoded = verifyParticipantToken(token);
+  if (decoded.sessionId !== sessionId) throw new Error("Unauthorized");
 
-  const participant = store.participants.find((item) => item.id === authToken.participantId && item.sessionId === sessionId);
+  const participant = store.participants.find(
+    (item) => item.id === decoded.participantId && item.sessionId === sessionId
+  );
   if (!participant) throw new Error("Unauthorized");
 
   return participant;
@@ -151,6 +169,16 @@ function sessionStateFromStore(store: StoreData, session: Session, viewer: Parti
   const participants = store.participants
     .filter((item) => item.sessionId === session.id)
     .map((item) => ({
+      votesUsed: store.votes.filter(
+        (vote) => vote.sessionId === session.id && vote.participantId === item.id
+      ).length,
+      votesRemaining: Math.max(
+        0,
+        VOTE_LIMIT_PER_PARTICIPANT -
+          store.votes.filter(
+            (vote) => vote.sessionId === session.id && vote.participantId === item.id
+          ).length
+      ),
       id: item.id,
       name: item.name,
       isAdmin: item.isAdmin,
@@ -224,28 +252,26 @@ export const backendStore = {
         isAdmin: true,
         createdAt: now
       };
-
-      const authToken: AuthToken = {
-        token: randomUUID(),
-        participantId,
-        sessionId,
-        createdAt: now
-      };
+      const token = issueParticipantToken({ participantId, sessionId });
 
       store.sessions.push(session);
       store.participants.push(participant);
-      store.authTokens.push(authToken);
       store.navigation.push({
         sessionId,
         activeSection: "retro",
         discussionEntryId: null,
         updatedAt: now
       });
+      logInfo("session.created", {
+        sessionId,
+        sessionSlug: session.slug,
+        adminParticipantId: participantId
+      });
 
       return {
         session,
         participant,
-        token: authToken.token,
+        token,
         joinUrl: `/session/${session.slug}/join`
       };
     });
@@ -265,18 +291,16 @@ export const backendStore = {
         isAdmin: false,
         createdAt: now
       };
-
-      const authToken: AuthToken = {
-        token: randomUUID(),
-        participantId: participant.id,
-        sessionId: session.id,
-        createdAt: now
-      };
+      const token = issueParticipantToken({ participantId: participant.id, sessionId: session.id });
 
       store.participants.push(participant);
-      store.authTokens.push(authToken);
+      logInfo("session.joined", {
+        sessionId: session.id,
+        sessionSlug: session.slug,
+        participantId: participant.id
+      });
 
-      return { participant, token: authToken.token, sessionSlug: session.slug };
+      return { participant, token, sessionSlug: session.slug };
     });
   },
 
@@ -314,6 +338,7 @@ export const backendStore = {
 
       store.entries.push(entry);
       session.updatedAt = nowIso();
+      logInfo("entry.created", { sessionId: session.id, entryId: entry.id, authorParticipantId: participant.id });
 
       return entry;
     });
@@ -337,6 +362,7 @@ export const backendStore = {
       store.votes = store.votes.filter((item) => item.entryId !== entry.id);
       if (entry.groupId) cleanupGroupIfSmall(store, entry.groupId);
       session.updatedAt = nowIso();
+      logInfo("entry.deleted", { sessionId: session.id, entryId: entry.id, actorParticipantId: participant.id });
 
       return { success: true };
     });
@@ -356,6 +382,7 @@ export const backendStore = {
       store.groups = store.groups.filter((group) => group.sessionId !== session.id);
       store.votes = store.votes.filter((item) => !sessionEntryIds.has(item.entryId));
       session.updatedAt = nowIso();
+      logInfo("entries.cleared", { sessionId: session.id, actorParticipantId: participant.id });
 
       return { success: true };
     });
@@ -392,6 +419,7 @@ export const backendStore = {
 
       store.votes.push(vote);
       session.updatedAt = nowIso();
+      logInfo("vote.added", { sessionId: session.id, entryId: entry.id, participantId: participant.id });
 
       return { vote, totalVotes: store.votes.filter((item) => item.entryId === entry.id).length };
     });
@@ -411,6 +439,7 @@ export const backendStore = {
 
       store.votes = store.votes.filter((item) => item.id !== vote.id);
       session.updatedAt = nowIso();
+      logInfo("vote.removed", { sessionId: session.id, entryId: input.entryId, participantId: participant.id });
 
       return { success: true };
     });
@@ -444,6 +473,7 @@ export const backendStore = {
       }
 
       session.updatedAt = nowIso();
+      logInfo("happiness.upserted", { sessionId: session.id, participantId: participant.id, score: input.score });
       return { success: true };
     });
   },
@@ -479,6 +509,7 @@ export const backendStore = {
       target.groupId = group.id;
       store.groups.push(group);
       session.updatedAt = nowIso();
+      logInfo("group.created", { sessionId: session.id, groupId: group.id });
       return group;
     });
   },
@@ -499,6 +530,7 @@ export const backendStore = {
 
       entry.groupId = group.id;
       session.updatedAt = nowIso();
+      logInfo("group.entry_added", { sessionId: session.id, groupId: group.id, entryId: entry.id });
       return { success: true };
     });
   },
@@ -518,6 +550,7 @@ export const backendStore = {
       entry.groupId = null;
       cleanupGroupIfSmall(store, groupId);
       session.updatedAt = nowIso();
+      logInfo("group.entry_removed", { sessionId: session.id, groupId, entryId: entry.id });
       return { success: true };
     });
   },
@@ -539,6 +572,7 @@ export const backendStore = {
       }
       entry.type = input.type;
       session.updatedAt = nowIso();
+      logInfo("entry.moved", { sessionId: session.id, entryId: entry.id, type: input.type });
       return { success: true };
     });
   },
@@ -566,6 +600,11 @@ export const backendStore = {
       }
 
       session.updatedAt = nowIso();
+      logInfo("navigation.updated", {
+        sessionId: session.id,
+        activeSection: input.activeSection,
+        actorParticipantId: participant.id
+      });
 
       return nav;
     });
