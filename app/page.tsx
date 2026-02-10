@@ -3,7 +3,12 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Moon, Share2, Sun } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +26,12 @@ import {
 } from "@/lib/discussion";
 import type { SessionStateResponse } from "@/lib/backend/types";
 import { RetroColumn } from "@/components/retro/retro-column";
-import { colorToneIndexFromSeed, initialsFromName, parseSessionCode, toRetroItems } from "@/lib/retro/utils";
+import {
+  colorToneIndexFromSeed,
+  initialsFromName,
+  parseSessionCode,
+  toRetroItems,
+} from "@/lib/retro/utils";
 import {
   addEntryToGroup,
   createEntry,
@@ -90,6 +100,7 @@ function HomeContent() {
     null,
   );
   const [apiError, setApiError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [wentRightInput, setWentRightInput] = useState("");
   const [wentWrongInput, setWentWrongInput] = useState("");
   const [wentRightItems, setWentRightItems] = useState<RetroEntry[]>([]);
@@ -140,6 +151,12 @@ function HomeContent() {
   );
   const hasDiscussionItems = wentRightItems.length + wentWrongItems.length > 0;
   const currentDiscussion = discussionQueue[discussionIndex];
+  const currentDiscussionEntryId = currentDiscussion?.id.split(":")[1] ?? "";
+  const currentDiscussionSourceItems =
+    currentDiscussion?.side === "right" ? wentRightItems : wentWrongItems;
+  const currentDiscussionEntry = currentDiscussionSourceItems.find(
+    (entry) => entry.id === currentDiscussionEntryId,
+  );
   const isAdmin = sessionState?.viewer?.isAdmin ?? false;
   const viewerId = sessionState?.viewer?.id ?? "";
   const participantMap = useMemo(
@@ -164,34 +181,35 @@ function HomeContent() {
   );
   const sessionEntryMap = useMemo(
     () =>
-      new Map(
-        (sessionState?.entries ?? []).map((entry) => [
-          entry.id,
-          entry
-        ]),
-      ),
+      new Map((sessionState?.entries ?? []).map((entry) => [entry.id, entry])),
     [sessionState],
   );
   const viewerName = sessionState?.viewer?.name ?? "";
   const currentUserInitials = useMemo(
-    () => initialsFromName(isSetupComplete ? viewerName || adminName : adminName),
-    [adminName, isSetupComplete, viewerName]
+    () =>
+      initialsFromName(isSetupComplete ? viewerName || adminName : adminName),
+    [adminName, isSetupComplete, viewerName],
   );
   const currentUserTone = useMemo(
-    () => colorToneIndexFromSeed((sessionState?.viewer?.id ?? "") || viewerName || adminName || "user"),
-    [adminName, sessionState?.viewer?.id, viewerName]
+    () =>
+      colorToneIndexFromSeed(
+        (sessionState?.viewer?.id ?? "") || viewerName || adminName || "user",
+      ),
+    [adminName, sessionState?.viewer?.id, viewerName],
   );
   const entryBadge = (entryId: string) => {
     const authorId = entryAuthorMap.get(entryId) ?? "";
     const authorName = participantMap.get(authorId)?.name ?? "";
     const tone = colorToneIndexFromSeed(authorId || entryId);
     return (
-      <span
-        className={`identity-badge identity-tone-${tone} grid size-6 shrink-0 place-items-center rounded-full border text-[10px] font-semibold`}
+      <Avatar
+        className={`identity-badge identity-tone-${tone} size-6 shrink-0 border`}
         title={authorName || "Unknown"}
       >
-        {initialsFromName(authorName)}
-      </span>
+        <AvatarFallback className="bg-transparent text-[10px] font-semibold text-inherit">
+          {initialsFromName(authorName)}
+        </AvatarFallback>
+      </Avatar>
     );
   };
 
@@ -225,14 +243,22 @@ function HomeContent() {
     setDiscussionQueue(queue);
     if (queue.length > 0) {
       const targetId = state.navigation.discussionEntryId;
-      const queueIndex = targetId ? queue.findIndex((topic) => topic.id === targetId) : 0;
+      const queueIndex = targetId
+        ? queue.findIndex((topic) => topic.id === targetId)
+        : 0;
       setDiscussionIndex(queueIndex >= 0 ? queueIndex : 0);
     } else {
       setDiscussionIndex(0);
     }
 
-    setDiscussionMode(state.navigation.activeSection === "discussion" || state.navigation.activeSection === "happiness");
-    setHappinessMode(state.navigation.activeSection === "happiness" || state.navigation.activeSection === "done");
+    setDiscussionMode(
+      state.navigation.activeSection === "discussion" ||
+        state.navigation.activeSection === "happiness",
+    );
+    setHappinessMode(
+      state.navigation.activeSection === "happiness" ||
+        state.navigation.activeSection === "done",
+    );
   }, []);
 
   // Single read path used for initial load and polling refreshes.
@@ -278,7 +304,9 @@ function HomeContent() {
   const endSession = useCallback(async () => {
     if (!isAdmin || !sessionSlug || !participantToken) return;
     try {
-      await setNavigation(sessionSlug, participantToken, { activeSection: "done" });
+      await setNavigation(sessionSlug, participantToken, {
+        activeSection: "done",
+      });
       resetToCreateSession();
       setApiError(null);
     } catch (error) {
@@ -318,11 +346,12 @@ function HomeContent() {
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem(THEME_KEY);
-    const initialTheme = savedTheme === "dark" || savedTheme === "light"
-      ? savedTheme
-      : window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
+    const initialTheme =
+      savedTheme === "dark" || savedTheme === "light"
+        ? savedTheme
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
     setTheme(initialTheme);
     document.documentElement.classList.toggle("dark", initialTheme === "dark");
   }, []);
@@ -365,7 +394,11 @@ function HomeContent() {
     if (!isSetupComplete) return;
     if (sessionState?.navigation.activeSection !== "done") return;
     resetToCreateSession();
-  }, [isSetupComplete, resetToCreateSession, sessionState?.navigation.activeSection]);
+  }, [
+    isSetupComplete,
+    resetToCreateSession,
+    sessionState?.navigation.activeSection,
+  ]);
 
   const addWentRight = () => {
     const next = wentRightInput.trim();
@@ -384,23 +417,34 @@ function HomeContent() {
   const joinExistingSession = useCallback(async () => {
     if (!canJoinSession) return;
     try {
-      setApiError(null);
+      setJoinError(null);
       const slug = parseSessionCode(joinSessionCode);
-      const payload = await joinSession(slug, { name: joinParticipantName.trim() });
+      const payload = await joinSession(slug, {
+        name: joinParticipantName.trim(),
+      });
       setStoredActiveSlug(payload.sessionSlug);
       setStoredToken(payload.sessionSlug, payload.token);
       setSessionSlug(payload.sessionSlug);
       setParticipantToken(payload.token);
       setIsSetupComplete(true);
+      setJoinError(null);
       await loadSessionState(payload.sessionSlug, payload.token);
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : "Unable to join session");
+      if (error instanceof Error && error.message.toLowerCase().includes("session not found")) {
+        setJoinError("Invalid session code. Please check the invite link or session ID.");
+        return;
+      }
+      setJoinError(
+        error instanceof Error ? error.message : "Unable to join session",
+      );
     }
   }, [canJoinSession, joinParticipantName, joinSessionCode, loadSessionState]);
 
   const addStandaloneItem = (side: Side, text: string) => {
     const type = side === "right" ? "went_right" : "went_wrong";
-    runMutation(() => createEntry(sessionSlug, participantToken, { type, content: text })).catch((error: unknown) => {
+    runMutation(() =>
+      createEntry(sessionSlug, participantToken, { type, content: text }),
+    ).catch((error: unknown) => {
       setApiError(
         error instanceof Error ? error.message : "Unable to create entry",
       );
@@ -414,7 +458,9 @@ function HomeContent() {
 
     if (target.kind === "group") {
       const groupedIds = target.items.map((item) => item.id);
-      const votedEntryId = groupedIds.find((entryId) => sessionEntryMap.get(entryId)?.votedByViewer);
+      const votedEntryId = groupedIds.find(
+        (entryId) => sessionEntryMap.get(entryId)?.votedByViewer,
+      );
       const voteTargetId = votedEntryId ?? groupedIds[0];
       if (!voteTargetId) return;
 
@@ -447,12 +493,15 @@ function HomeContent() {
     if (target.kind === "group") {
       runMutation(async () => {
         await Promise.all(
-          target.items.map((item) => ungroupEntry(sessionSlug, participantToken, target.id, item.id)),
+          target.items.map((item) =>
+            ungroupEntry(sessionSlug, participantToken, target.id, item.id),
+          ),
         );
-      })
-        .catch((error: unknown) => {
-          setApiError(error instanceof Error ? error.message : "Unable to ungroup items");
-        });
+      }).catch((error: unknown) => {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to ungroup items",
+        );
+      });
       return;
     }
 
@@ -466,11 +515,13 @@ function HomeContent() {
       return;
     }
 
-    runMutation(() => deleteEntry(sessionSlug, participantToken, id)).catch((error: unknown) => {
-      setApiError(
-        error instanceof Error ? error.message : "Unable to remove entry",
-      );
-    });
+    runMutation(() => deleteEntry(sessionSlug, participantToken, id)).catch(
+      (error: unknown) => {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to remove entry",
+        );
+      },
+    );
   };
 
   const groupItemsInSide = (
@@ -483,10 +534,12 @@ function HomeContent() {
       createGroup(sessionSlug, participantToken, {
         sourceEntryId: sourceId,
         targetEntryId: targetId,
-        name: groupName
+        name: groupName,
       }),
     ).catch((error: unknown) => {
-      setApiError(error instanceof Error ? error.message : "Unable to create group");
+      setApiError(
+        error instanceof Error ? error.message : "Unable to create group",
+      );
     });
   };
 
@@ -495,8 +548,12 @@ function HomeContent() {
     sourceId: string,
     targetGroupId: string,
   ) => {
-    runMutation(() => addEntryToGroup(sessionSlug, participantToken, targetGroupId, sourceId)).catch((error: unknown) => {
-      setApiError(error instanceof Error ? error.message : "Unable to add to group");
+    runMutation(() =>
+      addEntryToGroup(sessionSlug, participantToken, targetGroupId, sourceId),
+    ).catch((error: unknown) => {
+      setApiError(
+        error instanceof Error ? error.message : "Unable to add to group",
+      );
     });
   };
 
@@ -507,8 +564,12 @@ function HomeContent() {
   ) => {
     if (sourceSide === targetSide) return;
     const nextType = targetSide === "right" ? "went_right" : "went_wrong";
-    runMutation(() => moveEntry(sessionSlug, participantToken, sourceId, nextType)).catch((error: unknown) => {
-      setApiError(error instanceof Error ? error.message : "Unable to move entry");
+    runMutation(() =>
+      moveEntry(sessionSlug, participantToken, sourceId, nextType),
+    ).catch((error: unknown) => {
+      setApiError(
+        error instanceof Error ? error.message : "Unable to move entry",
+      );
     });
   };
 
@@ -517,20 +578,25 @@ function HomeContent() {
     groupId: string,
     itemId: string,
   ): Promise<string | null> => {
-    const sourceItems = sourceSide === "right" ? wentRightItems : wentWrongItems;
+    const sourceItems =
+      sourceSide === "right" ? wentRightItems : wentWrongItems;
     const targetGroup = sourceItems.find((entry) => entry.id === groupId);
     if (!targetGroup || targetGroup.kind !== "group") return null;
     const extracted = targetGroup.items.find((entry) => entry.id === itemId);
     if (!extracted) return null;
 
-    await runMutation(() => ungroupEntry(sessionSlug, participantToken, groupId, itemId));
+    await runMutation(() =>
+      ungroupEntry(sessionSlug, participantToken, groupId, itemId),
+    );
     return extracted.text;
   };
 
   const undoGroupedItem = (side: Side, groupId: string, itemId: string) => {
     void side;
     extractGroupedItem(side, groupId, itemId).catch((error: unknown) => {
-      setApiError(error instanceof Error ? error.message : "Unable to ungroup item");
+      setApiError(
+        error instanceof Error ? error.message : "Unable to ungroup item",
+      );
     });
   };
 
@@ -544,7 +610,11 @@ function HomeContent() {
           addStandaloneItem(targetSide, text);
         })
         .catch((error: unknown) => {
-          setApiError(error instanceof Error ? error.message : "Unable to move grouped item");
+          setApiError(
+            error instanceof Error
+              ? error.message
+              : "Unable to move grouped item",
+          );
         });
       setDragging(null);
       return;
@@ -556,7 +626,8 @@ function HomeContent() {
         return;
       }
 
-      const targetItems = targetSide === "right" ? wentRightItems : wentWrongItems;
+      const targetItems =
+        targetSide === "right" ? wentRightItems : wentWrongItems;
       const targetEntry = targetItems.find((entry) => entry.id === targetId);
       if (targetEntry?.kind === "group") {
         addItemToExistingGroup(targetSide, dragging.id, targetId);
@@ -578,7 +649,12 @@ function HomeContent() {
     if (!pendingGroup) return;
     const nextName = groupNameInput.trim();
     if (!nextName) return;
-    groupItemsInSide(pendingGroup.side, pendingGroup.sourceId, pendingGroup.targetId, nextName);
+    groupItemsInSide(
+      pendingGroup.side,
+      pendingGroup.sourceId,
+      pendingGroup.targetId,
+      nextName,
+    );
     setPendingGroup(null);
     setGroupNameInput("");
   };
@@ -593,7 +669,11 @@ function HomeContent() {
           addStandaloneItem(targetSide, text);
         })
         .catch((error: unknown) => {
-          setApiError(error instanceof Error ? error.message : "Unable to move grouped item");
+          setApiError(
+            error instanceof Error
+              ? error.message
+              : "Unable to move grouped item",
+          );
         });
       setDragging(null);
       return;
@@ -614,7 +694,7 @@ function HomeContent() {
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
         activeSection: "discussion",
-        discussionEntryId: queue[0]?.id ?? null
+        discussionEntryId: queue[0]?.id ?? null,
       }),
     ).catch((error: unknown) => {
       setApiError(
@@ -630,10 +710,12 @@ function HomeContent() {
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
         activeSection: "discussion",
-        discussionEntryId: nextTopic?.id ?? null
+        discussionEntryId: nextTopic?.id ?? null,
       }),
     ).catch((error: unknown) => {
-      setApiError(error instanceof Error ? error.message : "Unable to move to next topic");
+      setApiError(
+        error instanceof Error ? error.message : "Unable to move to next topic",
+      );
     });
   };
 
@@ -644,10 +726,14 @@ function HomeContent() {
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
         activeSection: "discussion",
-        discussionEntryId: previousTopic?.id ?? null
+        discussionEntryId: previousTopic?.id ?? null,
       }),
     ).catch((error: unknown) => {
-      setApiError(error instanceof Error ? error.message : "Unable to move to previous topic");
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : "Unable to move to previous topic",
+      );
     });
   };
 
@@ -656,7 +742,7 @@ function HomeContent() {
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
         activeSection: "happiness",
-        discussionEntryId: null
+        discussionEntryId: null,
       }),
     ).catch((error: unknown) => {
       setApiError(
@@ -685,9 +771,8 @@ function HomeContent() {
               Choose a name for the merged card.
             </DialogDescription>
           </DialogHeader>
-          <input
+          <Input
             className="mt-4 block h-[42px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card px-3 text-retro-strong placeholder:text-retro-subtle"
-            type="text"
             placeholder="Group name"
             value={groupNameInput}
             onChange={(event) => setGroupNameInput(event.target.value)}
@@ -727,7 +812,7 @@ function HomeContent() {
 
               return (
                 <div key={stage} className="flex items-center gap-2">
-                  <span
+                  <Badge
                     className={`inline-flex items-center rounded-full border px-3 py-2 text-xs ${
                       isCurrent
                         ? "border-retro-border bg-retro-card-hover text-retro-body"
@@ -737,7 +822,7 @@ function HomeContent() {
                     }`}
                   >
                     {stageLabel[stage]}
-                  </span>
+                  </Badge>
                   {index < stageOrder.length - 1 ? (
                     <span className="text-retro-subtle">›</span>
                   ) : null}
@@ -747,9 +832,9 @@ function HomeContent() {
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-retro-border bg-retro-surface-soft px-3 py-2 text-xs text-retro-strong before:size-1.5 before:rounded-full before:bg-retro-dot before:content-['']">
+            <Badge className="inline-flex items-center gap-2 rounded-full border border-retro-border bg-retro-surface-soft px-3 py-2 text-xs text-retro-strong before:size-1.5 before:rounded-full before:bg-retro-dot before:content-['']">
               Session Launchpad
-            </span>
+            </Badge>
             <span className="text-xs text-retro-subtle">
               Create your retrospective room
             </span>
@@ -760,15 +845,23 @@ function HomeContent() {
             type="button"
             aria-label="Toggle dark mode"
             className="grid size-[34px] place-items-center rounded-full border border-retro-border bg-retro-surface-soft text-retro-strong"
-            onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+            onClick={() =>
+              setTheme((current) => (current === "dark" ? "light" : "dark"))
+            }
           >
-            {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            {theme === "dark" ? (
+              <Sun className="size-4" />
+            ) : (
+              <Moon className="size-4" />
+            )}
           </button>
-          <span
-            className={`identity-badge identity-tone-${currentUserTone} grid size-[34px] place-items-center rounded-full border text-[11px] font-medium shadow-[0_10px_22px_rgba(0,0,0,0.07)]`}
+          <Avatar
+            className={`identity-badge identity-tone-${currentUserTone} size-[34px] border shadow-[0_10px_22px_rgba(0,0,0,0.07)]`}
           >
-            {currentUserInitials}
-          </span>
+            <AvatarFallback className="bg-transparent text-[11px] font-medium text-inherit">
+              {currentUserInitials}
+            </AvatarFallback>
+          </Avatar>
         </div>
       </header>
 
@@ -790,12 +883,14 @@ function HomeContent() {
                 .
               </p>
               <div className="mt-6">
-                <input
+                <Input
                   className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
-                  type="text"
                   placeholder="Your name"
                   value={joinParticipantName}
-                  onChange={(event) => setJoinParticipantName(event.target.value)}
+                  onChange={(event) => {
+                    setJoinError(null);
+                    setJoinParticipantName(event.target.value);
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -813,146 +908,149 @@ function HomeContent() {
                   Join Session
                 </Button>
               </div>
-              {apiError ? (
-                <p className="mt-3 text-sm text-retro-danger">{apiError}</p>
+              {joinError ? (
+                <p className="mt-3 text-sm text-retro-danger">{joinError}</p>
               ) : null}
             </div>
           </section>
         ) : (
-        <section className="my-[14px] mb-[26px]">
-          <div className="relative overflow-hidden rounded-[20px] border border-retro-border-soft bg-retro-surface p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_10%_15%,rgba(255,255,255,0.32),rgba(255,255,255,0)_46%),radial-gradient(circle_at_90%_90%,rgba(255,255,255,0.24),rgba(255,255,255,0)_45%)] before:content-[''] dark:before:bg-none">
-            <div className="relative z-10 grid grid-cols-[1.45fr_1fr] gap-6 max-[840px]:grid-cols-1">
-              <section>
-                <p className="text-xs tracking-[0.2em] text-retro-muted uppercase">
-                  Welcome
-                </p>
-                <h1 className="mt-2 text-[38px] leading-[1.05] font-medium text-retro-heading">
-                  Open a New Retro Room
-                </h1>
-                <p className="mt-3 max-w-[45ch] text-sm text-retro-muted">
-                  Give your session a team identity and assign the facilitator
-                  before the board unlocks.
-                </p>
+          <section className="my-[14px] mb-[26px]">
+            <div className="relative overflow-hidden rounded-[20px] border border-retro-border-soft bg-retro-surface p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_10%_15%,rgba(255,255,255,0.32),rgba(255,255,255,0)_46%),radial-gradient(circle_at_90%_90%,rgba(255,255,255,0.24),rgba(255,255,255,0)_45%)] before:content-[''] dark:before:bg-none">
+              <div className="relative z-10 grid grid-cols-[1.45fr_1fr] gap-6 max-[840px]:grid-cols-1">
+                <section>
+                  <p className="text-xs tracking-[0.2em] text-retro-muted uppercase">
+                    Welcome
+                  </p>
+                  <h1 className="mt-2 text-[38px] leading-[1.05] font-medium text-retro-heading">
+                    Create a New Retro Room
+                  </h1>
+                  <p className="mt-3 max-w-[45ch] text-sm text-retro-muted">
+                    Give your session a team identity and assign the facilitator
+                    before the board unlocks.
+                  </p>
 
-                <div className="mt-6 grid gap-3">
-                  <div>
-                    <label
-                      htmlFor="team-name"
-                      className="mb-1 block text-sm text-retro-strong"
-                    >
-                      Team Name
-                    </label>
-                    <input
-                      id="team-name"
-                      className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
-                      type="text"
-                      placeholder="e.g. Product Engineering"
-                      value={teamName}
-                      onChange={(event) => setTeamName(event.target.value)}
-                    />
+                  <div className="mt-6 grid gap-3">
+                    <div>
+                      <Label
+                        htmlFor="team-name"
+                        className="mb-1 block text-sm text-retro-strong"
+                      >
+                        Team Name
+                      </Label>
+                      <Input
+                        id="team-name"
+                        className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
+                        placeholder="e.g. Product Engineering"
+                        value={teamName}
+                        onChange={(event) => setTeamName(event.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="admin-name"
+                        className="mb-1 block text-sm text-retro-strong"
+                      >
+                        Facilitator Name
+                      </Label>
+                      <Input
+                        id="admin-name"
+                        className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
+                        placeholder="e.g. Alex Johnson"
+                        value={adminName}
+                        onChange={(event) => setAdminName(event.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label
-                      htmlFor="admin-name"
-                      className="mb-1 block text-sm text-retro-strong"
+
+                  <div className="mt-6">
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        if (!canEnterRetro) return;
+                        try {
+                          setApiError(null);
+                          const payload = await createSession({
+                            title: teamName.trim(),
+                            adminName: adminName.trim(),
+                          });
+                          const slug = payload.session.slug;
+                          setStoredActiveSlug(slug);
+                          setStoredToken(slug, payload.token);
+                          setSessionSlug(slug);
+                          setParticipantToken(payload.token);
+                          setIsSetupComplete(true);
+                          await loadSessionState(slug, payload.token);
+                        } catch (error) {
+                          setApiError(
+                            error instanceof Error
+                              ? error.message
+                              : "Unable to create session",
+                          );
+                        }
+                      }}
+                      disabled={!canEnterRetro}
                     >
-                      Facilitator Name
-                    </label>
-                    <input
-                      id="admin-name"
-                      className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
-                      type="text"
-                      placeholder="e.g. Alex Johnson"
-                      value={adminName}
-                      onChange={(event) => setAdminName(event.target.value)}
-                    />
+                      Launch Retrospective
+                    </Button>
                   </div>
-                </div>
+                  {apiError ? (
+                    <p className="mt-3 text-sm text-retro-danger">{apiError}</p>
+                  ) : null}
+                </section>
 
-                <div className="mt-6">
-                  <Button
-                    type="button"
-                    onClick={async () => {
-                      if (!canEnterRetro) return;
-                      try {
-                        setApiError(null);
-                        const payload = await createSession({
-                          title: teamName.trim(),
-                          adminName: adminName.trim(),
-                        });
-                        const slug = payload.session.slug;
-                        setStoredActiveSlug(slug);
-                        setStoredToken(slug, payload.token);
-                        setSessionSlug(slug);
-                        setParticipantToken(payload.token);
-                        setIsSetupComplete(true);
-                        await loadSessionState(slug, payload.token);
-                      } catch (error) {
-                        setApiError(
-                          error instanceof Error
-                            ? error.message
-                            : "Unable to create session",
-                        );
-                      }
-                    }}
-                    disabled={!canEnterRetro}
-                  >
-                    Launch Retrospective
-                  </Button>
-                </div>
-                {apiError ? (
-                  <p className="mt-3 text-sm text-retro-danger">{apiError}</p>
-                ) : null}
-              </section>
-
-              <section className="rounded-[16px] border border-retro-border-soft bg-retro-surface-soft p-5">
-                <h3 className="m-0 text-base font-medium text-retro-strong">
-                  Join Instead
-                </h3>
-                <p className="mt-2 text-xs text-retro-muted">
-                  Got a shared session code? Join an existing retrospective
-                  room.
-                </p>
-                <div className="mt-4 grid gap-2.5 rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
-                  <input
-                    className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
-                    type="text"
-                    placeholder="Session code or invite URL"
-                    value={joinSessionCode}
-                    onChange={(event) => setJoinSessionCode(event.target.value)}
-                  />
-                  <input
-                    className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
-                    type="text"
-                    placeholder="Your name"
-                    value={joinParticipantName}
-                    onChange={(event) =>
-                      setJoinParticipantName(event.target.value)
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!canJoinSession}
-                    onClick={joinExistingSession}
-                  >
-                    Join Session
-                  </Button>
-                </div>
-                <div className="mt-4 rounded-[12px] border border-retro-border-soft bg-retro-surface-soft px-3 py-2 text-xs text-retro-muted">
-                  Ask the admin to share the invite code from their session.
-                </div>
-              </section>
+                <section className="rounded-[16px] border border-retro-border-soft bg-retro-surface-soft p-5">
+                  <h3 className="m-0 text-base font-medium text-retro-strong">
+                    Join Instead
+                  </h3>
+                  <p className="mt-2 text-xs text-retro-muted">
+                    Got a shared session code? Join an existing retrospective
+                    room.
+                  </p>
+                  <div className="mt-4 grid gap-2.5 rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
+                    <Input
+                      className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
+                      placeholder="Session code or invite URL"
+                      value={joinSessionCode}
+                      onChange={(event) => {
+                        setJoinError(null);
+                        setJoinSessionCode(event.target.value);
+                      }}
+                    />
+                    <Input
+                      className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
+                      placeholder="Your name"
+                      value={joinParticipantName}
+                      onChange={(event) => {
+                        setJoinError(null);
+                        setJoinParticipantName(event.target.value);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!canJoinSession}
+                      onClick={joinExistingSession}
+                    >
+                      Join Session
+                    </Button>
+                  </div>
+                  <div className="mt-4 rounded-[12px] border border-retro-border-soft bg-retro-surface-soft px-3 py-2 text-xs text-retro-muted">
+                    Ask the admin to share the invite code from their session.
+                  </div>
+                  {joinError ? (
+                    <p className="mt-3 text-sm text-retro-danger">{joinError}</p>
+                  ) : null}
+                </section>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
         )
       ) : (
         <>
           <section className="my-[14px] mb-[26px]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                  <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-retro-heading">
+                <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-retro-heading">
                   {teamName.trim()} Retrospective
                 </h1>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-retro-muted">
@@ -986,7 +1084,9 @@ function HomeContent() {
                     onClick={() => {
                       if (!isAdmin) return;
                       runMutation(() =>
-                        setNavigation(sessionSlug, participantToken, { activeSection: "retro" }),
+                        setNavigation(sessionSlug, participantToken, {
+                          activeSection: "retro",
+                        }),
                       ).catch((error: unknown) => {
                         setApiError(
                           error instanceof Error
@@ -1017,7 +1117,9 @@ function HomeContent() {
                 <div className="relative z-10 min-h-[320px]">
                   {happinessMode ? (
                     <div className="max-w-xl">
-                      <p className="text-sm text-retro-muted">Session complete</p>
+                      <p className="text-sm text-retro-muted">
+                        Session complete
+                      </p>
                       <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-retro-heading">
                         Happiness Check
                       </h2>
@@ -1031,16 +1133,13 @@ function HomeContent() {
                           </span>
                           <span>{happinessMood.label}</span>
                         </div>
-                        <input
-                          id="happiness"
-                          type="range"
+                        <Slider
                           min={1}
                           max={10}
-                          value={happinessScore}
-                          onChange={(event) =>
-                            setHappinessScore(Number(event.target.value))
-                          }
-                          className="w-full accent-primary"
+                          step={1}
+                          value={[happinessScore]}
+                          onValueChange={(values) => setHappinessScore(values[0] ?? 7)}
+                          className="w-full"
                         />
                         <div className="mt-1 flex justify-between text-xs text-retro-muted">
                           <span>1</span>
@@ -1069,17 +1168,26 @@ function HomeContent() {
                           : "What went wrong"}{" "}
                         · {currentDiscussion.votes} votes
                       </p>
-                      <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-retro-heading">
-                        {currentDiscussion.title}
-                      </h2>
+                      <div className="mt-2 flex items-start gap-3">
+                        {currentDiscussion.kind === "item" && currentDiscussionEntryId
+                          ? entryBadge(currentDiscussionEntryId)
+                          : null}
+                        <h2 className="text-[26px] leading-[1.2] font-medium text-retro-heading">
+                          {currentDiscussion.title}
+                        </h2>
+                      </div>
                       {currentDiscussion.kind === "group" ? (
                         <ul className="mt-4 flex list-none flex-col gap-2 p-0">
-                          {currentDiscussion.items.map((item, index) => (
+                          {(currentDiscussionEntry?.kind === "group"
+                            ? currentDiscussionEntry.items
+                            : []
+                          ).map((item) => (
                             <li
-                              key={`${currentDiscussion.id}-${index}`}
-                              className="rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2 text-sm text-retro-strong"
+                              key={item.id}
+                              className="flex items-start gap-2 rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2 text-sm text-retro-strong"
                             >
-                              {item}
+                              {entryBadge(item.id)}
+                              <span>{item.text}</span>
                             </li>
                           ))}
                         </ul>
@@ -1097,7 +1205,11 @@ function HomeContent() {
                         type="button"
                         onClick={() => {
                           runMutation(() =>
-                            upsertHappiness(sessionSlug, participantToken, happinessScore),
+                            upsertHappiness(
+                              sessionSlug,
+                              participantToken,
+                              happinessScore,
+                            ),
                           )
                             .then(() => setHappinessSubmitted(true))
                             .catch((error: unknown) => {
@@ -1169,12 +1281,19 @@ function HomeContent() {
                   onDragStartGrouped={(side, groupId, itemId, dataTransfer) => {
                     dataTransfer.setData("text/plain", itemId);
                     dataTransfer.effectAllowed = "move";
-                    setDragging({ sourceSide: side, kind: "grouped-item", groupId, itemId });
+                    setDragging({
+                      sourceSide: side,
+                      kind: "grouped-item",
+                      groupId,
+                      itemId,
+                    });
                   }}
                   onDragEnd={() => setDragging(null)}
                   onToggleVote={toggleVote}
                   onRemove={removeItem}
-                  canRemove={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
+                  canRemove={(id) =>
+                    isAdmin || entryAuthorMap.get(id) === viewerId
+                  }
                   onUndoGroupedItem={undoGroupedItem}
                   renderEntryBadge={entryBadge}
                 />
@@ -1196,12 +1315,19 @@ function HomeContent() {
                   onDragStartGrouped={(side, groupId, itemId, dataTransfer) => {
                     dataTransfer.setData("text/plain", itemId);
                     dataTransfer.effectAllowed = "move";
-                    setDragging({ sourceSide: side, kind: "grouped-item", groupId, itemId });
+                    setDragging({
+                      sourceSide: side,
+                      kind: "grouped-item",
+                      groupId,
+                      itemId,
+                    });
                   }}
                   onDragEnd={() => setDragging(null)}
                   onToggleVote={toggleVote}
                   onRemove={removeItem}
-                  canRemove={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
+                  canRemove={(id) =>
+                    isAdmin || entryAuthorMap.get(id) === viewerId
+                  }
                   onUndoGroupedItem={undoGroupedItem}
                   renderEntryBadge={entryBadge}
                 />
@@ -1224,16 +1350,20 @@ function HomeContent() {
                         className="flex items-center justify-between gap-3 rounded-[14px] border border-retro-border-soft bg-retro-card px-3 py-3"
                       >
                         <span className="inline-flex items-center gap-2.5 text-sm text-retro-body">
-                          <span
+                          <Avatar
                             aria-hidden
-                            className={`identity-badge identity-tone-${colorToneIndexFromSeed(person.id)} grid size-[24px] place-items-center rounded-full border text-[10px] font-semibold`}
+                            className={`identity-badge identity-tone-${colorToneIndexFromSeed(person.id)} size-[24px] border`}
                           >
-                            {initialsFromName(person.name)}
-                          </span>
+                            <AvatarFallback className="bg-transparent text-[10px] font-semibold text-inherit">
+                              {initialsFromName(person.name)}
+                            </AvatarFallback>
+                          </Avatar>
                           {person.name}
                         </span>
                         {person.isAdmin ? (
-                          <span className="text-xs text-retro-muted">admin</span>
+                          <span className="text-xs text-retro-muted">
+                            admin
+                          </span>
                         ) : null}
                       </li>
                     ))}

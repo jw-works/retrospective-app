@@ -170,6 +170,24 @@
       "phase": "finished",
       "createdAt": "2026-02-10T16:40:22.098Z",
       "updatedAt": "2026-02-10T16:43:24.425Z"
+    },
+    {
+      "id": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "slug": "justforfix-uh3imt",
+      "title": "JustForFix",
+      "createdByParticipantId": "ac3ad939-6c8c-4744-8c59-ba0799fb3791",
+      "phase": "finished",
+      "createdAt": "2026-02-10T17:01:10.481Z",
+      "updatedAt": "2026-02-10T17:02:09.011Z"
+    },
+    {
+      "id": "ded6edab-ce28-425b-8dbd-58d01b61b1a1",
+      "slug": "justforfix-bqq01a",
+      "title": "JustForFix",
+      "createdByParticipantId": "76516727-dda5-496c-a764-57b2238ac139",
+      "phase": "finished",
+      "createdAt": "2026-02-10T17:03:50.347Z",
+      "updatedAt": "2026-02-10T17:09:39.257Z"
     }
   ],
   "participants": [
@@ -389,6 +407,20 @@
       "name": "Nayana Yadav",
       "isAdmin": false,
       "createdAt": "2026-02-10T16:43:30.276Z"
+    },
+    {
+      "id": "ac3ad939-6c8c-4744-8c59-ba0799fb3791",
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T17:01:10.481Z"
+    },
+    {
+      "id": "76516727-dda5-496c-a764-57b2238ac139",
+      "sessionId": "ded6edab-ce28-425b-8dbd-58d01b61b1a1",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-10T17:03:50.347Z"
     }
   ],
   "entries": [
@@ -589,6 +621,33 @@
       "content": "Still lots to do",
       "groupId": null,
       "createdAt": "2026-02-10T16:41:55.659Z"
+    },
+    {
+      "id": "8059db31-46d7-4be3-a4b9-323275510c41",
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "authorParticipantId": "ac3ad939-6c8c-4744-8c59-ba0799fb3791",
+      "type": "went_right",
+      "content": "First comment",
+      "groupId": "3b368512-3351-4de3-bd86-c00bbab4876d",
+      "createdAt": "2026-02-10T17:01:33.467Z"
+    },
+    {
+      "id": "9b522dd8-9542-41de-97e0-ce6aadeb34bb",
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "authorParticipantId": "ac3ad939-6c8c-4744-8c59-ba0799fb3791",
+      "type": "went_right",
+      "content": "Second comment",
+      "groupId": "3b368512-3351-4de3-bd86-c00bbab4876d",
+      "createdAt": "2026-02-10T17:01:36.384Z"
+    },
+    {
+      "id": "56192d2b-8507-4ac5-a171-cf9a9414c6f0",
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "authorParticipantId": "ac3ad939-6c8c-4744-8c59-ba0799fb3791",
+      "type": "went_right",
+      "content": "Third comment",
+      "groupId": "3b368512-3351-4de3-bd86-c00bbab4876d",
+      "createdAt": "2026-02-10T17:01:40.174Z"
     }
   ],
   "groups": [
@@ -612,6 +671,13 @@
       "type": "went_right",
       "name": "Similar",
       "createdAt": "2026-02-10T16:42:27.931Z"
+    },
+    {
+      "id": "3b368512-3351-4de3-bd86-c00bbab4876d",
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "type": "went_right",
+      "name": "Group",
+      "createdAt": "2026-02-10T17:01:46.258Z"
     }
   ],
   "votes": [
@@ -808,6 +874,14 @@
       "score": 7,
       "createdAt": "2026-02-10T16:43:20.556Z",
       "updatedAt": "2026-02-10T16:43:20.556Z"
+    },
+    {
+      "id": "92b223d8-a673-424e-963d-031b63508b3a",
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "participantId": "ac3ad939-6c8c-4744-8c59-ba0799fb3791",
+      "score": 7,
+      "createdAt": "2026-02-10T17:02:04.965Z",
+      "updatedAt": "2026-02-10T17:02:04.965Z"
     }
   ],
   "navigation": [
@@ -924,6 +998,18 @@
       "activeSection": "done",
       "discussionEntryId": null,
       "updatedAt": "2026-02-10T16:43:24.425Z"
+    },
+    {
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T17:02:09.011Z"
+    },
+    {
+      "sessionId": "ded6edab-ce28-425b-8dbd-58d01b61b1a1",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-10T17:09:39.257Z"
     }
   ],
   "authTokens": [
@@ -1112,6 +1198,18 @@
       "participantId": "87e5f7e2-27af-4c4c-a262-058ddbe2792a",
       "sessionId": "20f1bf75-b35c-4237-b0e1-d8a6e9c0a2ab",
       "createdAt": "2026-02-10T16:43:30.276Z"
+    },
+    {
+      "token": "11d7b788-cb96-44f4-bf35-7f023e7afefd",
+      "participantId": "ac3ad939-6c8c-4744-8c59-ba0799fb3791",
+      "sessionId": "fcbd4972-8522-4204-ab26-791a35350a5a",
+      "createdAt": "2026-02-10T17:01:10.481Z"
+    },
+    {
+      "token": "aa5edaf3-3ff8-4da5-a9d0-5a53107d3ab0",
+      "participantId": "76516727-dda5-496c-a764-57b2238ac139",
+      "sessionId": "ded6edab-ce28-425b-8dbd-58d01b61b1a1",
+      "createdAt": "2026-02-10T17:03:50.347Z"
     }
   ]
 }

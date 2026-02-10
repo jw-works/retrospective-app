@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Input } from "@/components/ui/input";
 import type { RetroEntry, Side } from "@/lib/discussion";
 
 // Reusable board column used by both "went right" and "went wrong" sections.
@@ -52,9 +53,8 @@ export function RetroColumn({
       <h2 className="m-0 text-lg font-medium text-retro-strong">{title}</h2>
       <div className="mt-[14px]">
         <div className="relative">
-          <input
+          <Input
             className="block h-[42px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card px-3 pr-11 text-retro-strong placeholder:text-retro-subtle"
-            type="text"
             placeholder="Type and press enter"
             value={inputValue}
             onChange={(event) => onInputChange(event.target.value)}
