@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,13 +20,7 @@ import {
   type RetroEntry,
   type Side
 } from "@/lib/discussion";
-
-const people = [
-  { name: "Annabel", online: true },
-  { name: "Mo", online: true },
-  { name: "Priya", online: false },
-  { name: "Sam", online: false }
-];
+import type { SessionStateResponse } from "@/lib/backend/types";
 
 type DragState = {
   sourceSide: Side;
@@ -48,68 +42,38 @@ type PendingGroup = {
   targetId: string;
 };
 
-const seededRight: RetroEntry[] = [
-  {
-    kind: "item",
-    id: "right-1",
-    text: "Release shipped on time, idk whats happening but its very sad to see teams not coordinating",
-    votes: 2,
-    voted: false,
-    ts: Date.now() - 300000
-  },
-  {
-    kind: "item",
-    id: "right-2",
-    text: "Support tickets down 18%",
-    votes: 1,
-    voted: false,
-    ts: Date.now() - 240000
-  },
-  {
-    kind: "item",
-    id: "right-3",
-    text: "Faster code reviews",
-    votes: 0,
-    voted: false,
-    ts: Date.now() - 180000
-  }
-];
+type ApiError = { error?: string };
 
-const seededWrong: RetroEntry[] = [
-  {
-    kind: "item",
-    id: "wrong-1",
-    text: "Build flakiness on CI",
-    votes: 3,
-    voted: false,
-    ts: Date.now() - 360000
-  },
-  {
-    kind: "item",
-    id: "wrong-2",
-    text: "Late scope changes",
-    votes: 1,
-    voted: false,
-    ts: Date.now() - 200000
-  },
-  {
-    kind: "item",
-    id: "wrong-3",
-    text: "Missing handover docs",
-    votes: 0,
-    voted: false,
-    ts: Date.now() - 120000
-  }
-];
+type SessionEntry = SessionStateResponse["entries"][number];
+
+const ACTIVE_SLUG_KEY = "retro.activeSlug";
+const tokenKey = (slug: string) => `retro.token.${slug}`;
+
+function toRetroItems(entries: SessionEntry[], type: SessionEntry["type"]): RetroEntry[] {
+  return entries
+    .filter((entry) => entry.type === type)
+    .map((entry) => ({
+      kind: "item" as const,
+      id: entry.id,
+      text: entry.content,
+      votes: entry.votes,
+      voted: entry.votedByViewer,
+      ts: Date.parse(entry.createdAt)
+    }));
+}
 
 export default function Home() {
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [adminName, setAdminName] = useState("");
+  const [sessionSlug, setSessionSlug] = useState("");
+  const [participantToken, setParticipantToken] = useState("");
+  const [sessionState, setSessionState] = useState<SessionStateResponse | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [wentRightInput, setWentRightInput] = useState("");
   const [wentWrongInput, setWentWrongInput] = useState("");
-  const [wentRightItems, setWentRightItems] = useState<RetroEntry[]>(seededRight);
-  const [wentWrongItems, setWentWrongItems] = useState<RetroEntry[]>(seededWrong);
+  const [wentRightItems, setWentRightItems] = useState<RetroEntry[]>([]);
+  const [wentWrongItems, setWentWrongItems] = useState<RetroEntry[]>([]);
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [pendingGroup, setPendingGroup] = useState<PendingGroup | null>(null);
   const [groupNameInput, setGroupNameInput] = useState("");
@@ -119,15 +83,23 @@ export default function Home() {
   const [happinessMode, setHappinessMode] = useState(false);
   const [happinessScore, setHappinessScore] = useState(7);
   const [happinessSubmitted, setHappinessSubmitted] = useState(false);
-  const sessionId = "SES-7K2P9M";
+  const sessionId = sessionSlug ? sessionSlug.toUpperCase() : "SES-7K2P9M";
 
-  const currentStage = !discussionMode
-    ? "retro"
-    : happinessMode
-      ? happinessSubmitted
-        ? "done"
-        : "happinessCheck"
-      : "discussion";
+  const currentStage = sessionState
+    ? sessionState.navigation.activeSection === "discussion"
+      ? "discussion"
+      : sessionState.navigation.activeSection === "happiness"
+        ? "happinessCheck"
+        : sessionState.navigation.activeSection === "done"
+          ? "done"
+          : "retro"
+    : !discussionMode
+      ? "retro"
+      : happinessMode
+        ? happinessSubmitted
+          ? "done"
+          : "happinessCheck"
+        : "discussion";
   const stageOrder = ["retro", "discussion", "happinessCheck", "done"] as const;
   const stageLabel: Record<(typeof stageOrder)[number], string> = {
     retro: "Retro",
@@ -141,6 +113,16 @@ export default function Home() {
   const sortedWrong = useMemo(() => sortEntries(wentWrongItems), [wentWrongItems]);
   const hasDiscussionItems = wentRightItems.length + wentWrongItems.length > 0;
   const currentDiscussion = discussionQueue[discussionIndex];
+  const isAdmin = sessionState?.viewer?.isAdmin ?? false;
+  const viewerId = sessionState?.viewer?.id ?? "";
+  const participantMap = useMemo(
+    () => new Map((sessionState?.participants ?? []).map((participant) => [participant.id, participant])),
+    [sessionState]
+  );
+  const entryAuthorMap = useMemo(
+    () => new Map((sessionState?.entries ?? []).map((entry) => [entry.id, entry.authorParticipantId])),
+    [sessionState]
+  );
   const adminInitials = useMemo(() => {
     const parts = adminName
       .trim()
@@ -163,6 +145,116 @@ export default function Home() {
           ? { emoji: "🙂", label: "Good" }
             : { emoji: "😄", label: "Great" };
 
+  const applySessionState = useCallback((state: SessionStateResponse) => {
+    setSessionState(state);
+    setTeamName(state.session.title);
+    const admin = state.participants.find((participant) => participant.isAdmin);
+    if (admin) setAdminName(admin.name);
+    setWentRightItems(toRetroItems(state.entries, "went_right"));
+    setWentWrongItems(toRetroItems(state.entries, "went_wrong"));
+    setDiscussionMode(state.navigation.activeSection === "discussion" || state.navigation.activeSection === "happiness");
+    setHappinessMode(state.navigation.activeSection === "happiness" || state.navigation.activeSection === "done");
+  }, []);
+
+  const loadSessionState = useCallback(
+    async (slug: string, token: string) => {
+      const response = await fetch(`/api/sessions/${slug}/state`, {
+        cache: "no-store",
+        headers: token ? { "x-participant-token": token } : {}
+      });
+      const payload = (await response.json()) as SessionStateResponse | ApiError;
+      if (!response.ok || !("session" in payload)) {
+        throw new Error("error" in payload ? payload.error ?? "Unable to load session" : "Unable to load session");
+      }
+      applySessionState(payload);
+    },
+    [applySessionState]
+  );
+
+  const apiRequest = useCallback(
+    async (path: string, options: RequestInit) => {
+      if (!sessionSlug || !participantToken) throw new Error("Missing session credentials");
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          "x-participant-token": participantToken,
+          ...(options.headers ?? {})
+        }
+      });
+      const payload = (await response.json()) as ApiError;
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Request failed");
+      }
+      await loadSessionState(sessionSlug, participantToken);
+    },
+    [loadSessionState, participantToken, sessionSlug]
+  );
+
+  const resetToCreateSession = useCallback(() => {
+    if (sessionSlug) {
+      localStorage.removeItem(tokenKey(sessionSlug));
+    }
+    localStorage.removeItem(ACTIVE_SLUG_KEY);
+    setSessionSlug("");
+    setParticipantToken("");
+    setSessionState(null);
+    setWentRightItems([]);
+    setWentWrongItems([]);
+    setDiscussionQueue([]);
+    setDiscussionIndex(0);
+    setDiscussionMode(false);
+    setHappinessMode(false);
+    setHappinessSubmitted(false);
+    setIsSetupComplete(false);
+  }, [sessionSlug]);
+
+  const endSession = useCallback(async () => {
+    if (!isAdmin || !sessionSlug || !participantToken) return;
+    try {
+      const response = await fetch(`/api/sessions/${sessionSlug}/navigation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-participant-token": participantToken
+        },
+        body: JSON.stringify({ activeSection: "done" })
+      });
+      if (!response.ok) {
+        const payload = (await response.json()) as ApiError;
+        throw new Error(payload.error ?? "Unable to end session");
+      }
+      resetToCreateSession();
+      setApiError(null);
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Unable to end session");
+    }
+  }, [isAdmin, participantToken, resetToCreateSession, sessionSlug]);
+
+  useEffect(() => {
+    const slug = localStorage.getItem(ACTIVE_SLUG_KEY);
+    if (!slug) return;
+    const token = localStorage.getItem(tokenKey(slug)) ?? "";
+    if (!token) return;
+
+    setSessionSlug(slug);
+    setParticipantToken(token);
+    setIsSetupComplete(true);
+    loadSessionState(slug, token).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to restore previous session");
+    });
+  }, [loadSessionState]);
+
+  useEffect(() => {
+    if (!sessionSlug || !participantToken || !isSetupComplete) return;
+    const interval = setInterval(() => {
+      loadSessionState(sessionSlug, participantToken).catch(() => {
+        // Keep polling resilient; explicit action errors are shown in button handlers.
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isSetupComplete, loadSessionState, participantToken, sessionSlug]);
+
   const addWentRight = () => {
     const next = wentRightInput.trim();
     if (!next) return;
@@ -178,54 +270,43 @@ export default function Home() {
   };
 
   const addStandaloneItem = (side: Side, text: string) => {
-    const nextItem: ItemEntry = {
-      kind: "item",
-      id: `${side}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      text,
-      votes: 0,
-      voted: false,
-      ts: Date.now()
-    };
-    if (side === "right") setWentRightItems((current) => [...current, nextItem]);
-    if (side === "wrong") setWentWrongItems((current) => [...current, nextItem]);
+    const type = side === "right" ? "went_right" : "went_wrong";
+    apiRequest(`/api/sessions/${sessionSlug}/entries`, {
+      method: "POST",
+      body: JSON.stringify({ type, content: text })
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to create entry");
+    });
   };
 
   const toggleVote = (side: Side, id: string) => {
-    const update = (items: RetroEntry[]) =>
-      items.map((item) => {
-        if (item.id !== id) return item;
-        const voted = !item.voted;
-        return { ...item, voted, votes: Math.max(0, item.votes + (voted ? 1 : -1)) };
-      });
+    const source = side === "right" ? wentRightItems : wentWrongItems;
+    const target = source.find((item) => item.id === id);
+    if (!target) return;
 
-    if (side === "right") setWentRightItems((current) => update(current));
-    if (side === "wrong") setWentWrongItems((current) => update(current));
+    const method = target.voted ? "DELETE" : "POST";
+    const path = target.voted
+      ? `/api/sessions/${sessionSlug}/votes/${id}`
+      : `/api/sessions/${sessionSlug}/votes`;
+    const body = target.voted ? undefined : JSON.stringify({ entryId: id });
+
+    apiRequest(path, { method, body }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to update vote");
+    });
   };
 
-  const removeItem = (side: Side, id: string) => {
-    const applyRemove = (items: RetroEntry[]) => {
-      const target = items.find((item) => item.id === id);
-      if (!target) return items;
+  const removeItem = (_side: Side, id: string) => {
+    const authorId = entryAuthorMap.get(id);
+    if (!authorId) return;
+    const canDelete = isAdmin || authorId === viewerId;
+    if (!canDelete) {
+      setApiError("Only admins can delete all entries. Non-admins can delete only their own entries.");
+      return;
+    }
 
-      if (target.kind === "item") {
-        return items.filter((item) => item.id !== id);
-      }
-
-      const restoredItems: ItemEntry[] = target.items.map((groupedItem) => ({
-        kind: "item",
-        id: `${side}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        text: groupedItem.text,
-        votes: 0,
-        voted: false,
-        ts: Date.now()
-      }));
-
-      const withoutGroup = items.filter((item) => item.id !== id);
-      return [...withoutGroup, ...restoredItems];
-    };
-
-    if (side === "right") setWentRightItems((current) => applyRemove(current));
-    if (side === "wrong") setWentWrongItems((current) => applyRemove(current));
+    apiRequest(`/api/sessions/${sessionSlug}/entries/${id}`, { method: "DELETE" }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to remove entry");
+    });
   };
 
   const groupItemsInSide = (side: Side, sourceId: string, targetId: string, groupName: string) => {
@@ -310,8 +391,11 @@ export default function Home() {
         continue;
       }
 
+      if (entry.kind !== "group") continue;
+
       if (remainingItems.length >= 2) {
-        nextEntries.push({ ...entry, items: remainingItems });
+        const updatedGroup: GroupEntry = { ...entry, items: remainingItems };
+        nextEntries.push(updatedGroup);
         continue;
       }
 
@@ -340,80 +424,39 @@ export default function Home() {
   };
 
   const handleDropOnItem = (targetSide: Side, targetId: string) => {
-    if (!dragging) return;
-
-    if (dragging.kind === "grouped-item") {
-      const text = extractGroupedItem(dragging.sourceSide, dragging.groupId, dragging.itemId);
-      if (!text) {
-        setDragging(null);
-        return;
-      }
-      addStandaloneItem(targetSide, text);
-      setDragging(null);
-      return;
-    }
-
-    if (dragging.sourceSide === targetSide) {
-      if (dragging.id === targetId) {
-        setDragging(null);
-        return;
-      }
-
-      const targetItems = targetSide === "right" ? wentRightItems : wentWrongItems;
-      const targetEntry = targetItems.find((entry) => entry.id === targetId);
-      if (targetEntry?.kind === "group") {
-        addItemToExistingGroup(targetSide, dragging.id, targetId);
-        setDragging(null);
-        return;
-      }
-
-      setPendingGroup({ side: targetSide, sourceId: dragging.id, targetId });
-      setGroupNameInput("New group");
-      setDragging(null);
-      return;
-    }
-
-    moveItemAcrossSides(dragging.sourceSide, targetSide, dragging.id);
+    void targetSide;
+    void targetId;
+    setApiError("Drag/group actions are not synced to backend yet.");
     setDragging(null);
   };
 
   const createPendingGroup = () => {
-    if (!pendingGroup) return;
-    const nextName = groupNameInput.trim();
-    if (!nextName) return;
-    groupItemsInSide(pendingGroup.side, pendingGroup.sourceId, pendingGroup.targetId, nextName);
+    setApiError("Grouping is not synced to backend yet.");
     setPendingGroup(null);
     setGroupNameInput("");
   };
 
   const handleDropOnPanel = (targetSide: Side) => {
-    if (!dragging) return;
-
-    if (dragging.kind === "grouped-item") {
-      const text = extractGroupedItem(dragging.sourceSide, dragging.groupId, dragging.itemId);
-      if (!text) {
-        setDragging(null);
-        return;
-      }
-      addStandaloneItem(targetSide, text);
-      setDragging(null);
-      return;
-    }
-
-    if (dragging.sourceSide === targetSide) return;
-
-    moveItemAcrossSides(dragging.sourceSide, targetSide, dragging.id);
+    void targetSide;
+    setApiError("Drag/group actions are not synced to backend yet.");
     setDragging(null);
   };
 
   const startDiscussion = () => {
+    if (!isAdmin) {
+      setApiError("Only the admin can start discussion.");
+      return;
+    }
     const queue = buildDiscussionQueue(wentRightItems, wentWrongItems);
     if (!queue.length) return;
     setDiscussionQueue(queue);
     setDiscussionIndex(0);
-    setHappinessMode(false);
-    setHappinessSubmitted(false);
-    setDiscussionMode(true);
+    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
+      method: "POST",
+      body: JSON.stringify({ activeSection: "discussion" })
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to start discussion");
+    });
   };
 
   const nextDiscussion = () => {
@@ -427,7 +470,13 @@ export default function Home() {
   };
 
   const finishDiscussion = () => {
-    setHappinessMode(true);
+    if (!isAdmin) return;
+    apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
+      method: "POST",
+      body: JSON.stringify({ activeSection: "happiness" })
+    }).catch((error: unknown) => {
+      setApiError(error instanceof Error ? error.message : "Unable to move to happiness check");
+    });
   };
 
   return (
@@ -562,15 +611,43 @@ export default function Home() {
                 <div className="mt-6">
                   <Button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!canEnterRetro) return;
-                      setIsSetupComplete(true);
+                      try {
+                        setApiError(null);
+                        const response = await fetch("/api/sessions", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ title: teamName.trim(), adminName: adminName.trim() })
+                        });
+                        const payload = (await response.json()) as
+                          | {
+                              session: { slug: string };
+                              token: string;
+                            }
+                          | ApiError;
+
+                        if (!response.ok || !("session" in payload)) {
+                          throw new Error("error" in payload ? payload.error ?? "Unable to create session" : "Unable to create session");
+                        }
+
+                        const slug = payload.session.slug;
+                        localStorage.setItem(ACTIVE_SLUG_KEY, slug);
+                        localStorage.setItem(tokenKey(slug), payload.token);
+                        setSessionSlug(slug);
+                        setParticipantToken(payload.token);
+                        setIsSetupComplete(true);
+                        await loadSessionState(slug, payload.token);
+                      } catch (error) {
+                        setApiError(error instanceof Error ? error.message : "Unable to create session");
+                      }
                     }}
                     disabled={!canEnterRetro}
                   >
                     Launch Retrospective
                   </Button>
                 </div>
+                {apiError ? <p className="mt-3 text-sm text-[#a64141]">{apiError}</p> : null}
               </section>
 
               <section className="rounded-[16px] border border-black/6 bg-white/35 p-5">
@@ -587,7 +664,11 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="mt-4 rounded-[12px] border border-black/6 bg-white/35 px-3 py-2 text-xs text-[#7a8088]">
-                  Session ID will be shareable once backend integration is added.
+                  {sessionSlug
+                    ? `Invite: ${
+                        typeof window !== "undefined" ? window.location.origin : ""
+                      }/session/${sessionSlug}/join`
+                    : "Session ID will appear after launch."}
                 </div>
               </section>
             </div>
@@ -597,19 +678,57 @@ export default function Home() {
         <>
           <section className="my-[14px] mb-[26px]">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-[#3a3d41]">{teamName.trim()} Retrospective</h1>
-              {!discussionMode ? (
-                <Button type="button" onClick={startDiscussion} disabled={!hasDiscussionItems}>
-                  Start Discussion
-                </Button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={() => setDiscussionMode(false)}>
+              <div>
+                <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-[#3a3d41]">{teamName.trim()} Retrospective</h1>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#7a8088]">
+                  <span className="rounded-[10px] border border-black/8 bg-white/40 px-2.5 py-1">{sessionId}</span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-[10px] border border-black/8 bg-white/40 px-2.5 py-1 text-[#6a7078]"
+                    onClick={() => {
+                      if (!sessionSlug) return;
+                      const invite = `${window.location.origin}/session/${sessionSlug}/join`;
+                      navigator.clipboard.writeText(invite).catch(() => {
+                        setApiError("Could not copy invite link");
+                      });
+                    }}
+                  >
+                    <Share2 className="size-3.5" />
+                    Copy invite link
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {!discussionMode ? (
+                  <Button type="button" onClick={startDiscussion} disabled={!hasDiscussionItems || !isAdmin}>
+                    Start Discussion
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!isAdmin}
+                    onClick={() => {
+                      if (!isAdmin) return;
+                      apiRequest(`/api/sessions/${sessionSlug}/navigation`, {
+                        method: "POST",
+                        body: JSON.stringify({ activeSection: "retro" })
+                      }).catch((error: unknown) => {
+                        setApiError(error instanceof Error ? error.message : "Unable to return to board");
+                      });
+                    }}
+                  >
                     Back To Board
                   </Button>
-                </div>
-              )}
+                )}
+                {isAdmin ? (
+                  <Button type="button" variant="outline" onClick={endSession}>
+                    End Session
+                  </Button>
+                ) : null}
+              </div>
             </div>
+            {apiError ? <p className="mt-2 text-sm text-[#a64141]">{apiError}</p> : null}
           </section>
 
           <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
@@ -684,7 +803,19 @@ export default function Home() {
 
               {happinessMode && !happinessSubmitted ? (
                 <div className="absolute right-0 bottom-0">
-                  <Button type="button" onClick={() => setHappinessSubmitted(true)}>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      apiRequest(`/api/sessions/${sessionSlug}/happiness`, {
+                        method: "POST",
+                        body: JSON.stringify({ score: happinessScore })
+                      })
+                        .then(() => setHappinessSubmitted(true))
+                        .catch((error: unknown) => {
+                          setApiError(error instanceof Error ? error.message : "Unable to submit happiness");
+                        });
+                    }}
+                  >
                     Submit Check
                   </Button>
                 </div>
@@ -696,15 +827,20 @@ export default function Home() {
                     {discussionIndex + 1}/{discussionQueue.length}
                   </span>
                   <div className="absolute right-0 bottom-0 flex items-center gap-2">
-                  <Button type="button" variant="outline" onClick={previousDiscussion} disabled={discussionIndex === 0}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={previousDiscussion}
+                    disabled={discussionIndex === 0 || !isAdmin}
+                  >
                     Previous
                   </Button>
                   {discussionIndex >= discussionQueue.length - 1 ? (
-                    <Button type="button" onClick={finishDiscussion}>
+                    <Button type="button" onClick={finishDiscussion} disabled={!isAdmin}>
                       Finish
                     </Button>
                   ) : (
-                    <Button type="button" onClick={nextDiscussion}>
+                    <Button type="button" onClick={nextDiscussion} disabled={!isAdmin}>
                       Next Topic
                     </Button>
                   )}
@@ -832,14 +968,16 @@ export default function Home() {
                   >
                     ↑
                   </button>
-                  <button
-                    type="button"
-                    aria-label="Remove"
-                    onClick={() => removeItem("right", item.id)}
-                    className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
-                  >
-                    ×
-                  </button>
+                  {isAdmin || entryAuthorMap.get(item.id) === viewerId ? (
+                    <button
+                      type="button"
+                      aria-label="Remove"
+                      onClick={() => removeItem("right", item.id)}
+                      className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
+                    >
+                      ×
+                    </button>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -963,14 +1101,16 @@ export default function Home() {
                   >
                     ↑
                   </button>
-                  <button
-                    type="button"
-                    aria-label="Remove"
-                    onClick={() => removeItem("wrong", item.id)}
-                    className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
-                  >
-                    ×
-                  </button>
+                  {isAdmin || entryAuthorMap.get(item.id) === viewerId ? (
+                    <button
+                      type="button"
+                      aria-label="Remove"
+                      onClick={() => removeItem("wrong", item.id)}
+                      className="h-[30px] w-[30px] rounded-[10px] border border-black/6 bg-white/55 text-center leading-7 text-[#6a7078]"
+                    >
+                      ×
+                    </button>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -982,37 +1122,19 @@ export default function Home() {
         <aside className="flex flex-col gap-4">
           <section className="relative overflow-hidden rounded-2xl border border-black/6 bg-[#eeeeef] p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-['']">
             <div className="relative z-10">
-              <h3 className="m-0 text-base font-medium text-[#565b62]">Session</h3>
-              <div className="mt-3 flex items-center justify-between rounded-[14px] border border-black/6 bg-white/28 px-3 py-3">
-                <span className="text-sm text-[#4f545a]">{sessionId}</span>
-                <button
-                  type="button"
-                  className="grid size-7 place-items-center rounded-[10px] border border-black/8 bg-white/55 text-[#6a7078]"
-                  aria-label="Share session"
-                  title="Share session"
-                >
-                  <Share2 className="size-3.5" />
-                </button>
-              </div>
-            </div>
-          </section>
-          <section className="relative overflow-hidden rounded-2xl border border-black/6 bg-[#eeeeef] p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/50 before:to-white/0 before:content-['']">
-            <div className="relative z-10">
               <h3 className="m-0 text-base font-medium text-[#565b62]">People online</h3>
-              <p className="mt-2 text-sm text-[#7a8088]">8 available</p>
+              <p className="mt-2 text-sm text-[#7a8088]">{sessionState?.participants.length ?? 0} available</p>
               <ul aria-label="People online" className="mt-[14px] flex list-none flex-col gap-2.5 p-0">
-                {people.map((person) => (
+                {(sessionState?.participants ?? []).map((person) => (
                   <li
-                    key={person.name}
+                    key={person.id}
                     className="flex items-center justify-between gap-3 rounded-[14px] border border-black/6 bg-white/28 px-3 py-3"
                   >
                     <span className="inline-flex items-center gap-2.5 text-sm text-[#4f545a]">
-                      <span
-                        aria-hidden
-                        className={`size-[14px] rounded-full ${person.online ? "bg-[#34c759]" : "bg-[#c9ccd1]"}`}
-                      />
+                      <span aria-hidden className="size-[14px] rounded-full bg-[#34c759]" />
                       {person.name}
                     </span>
+                    {person.isAdmin ? <span className="text-xs text-[#7a8088]">admin</span> : null}
                   </li>
                 ))}
               </ul>
