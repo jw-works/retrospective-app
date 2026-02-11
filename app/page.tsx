@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ import {
   moveEntry,
   setNavigation,
   ungroupEntry,
+  updateEntry,
   upsertHappiness,
   voteEntry,
   unvoteEntry,
@@ -77,6 +79,10 @@ type PendingGroup = {
   targetId: string;
 };
 
+type PendingEdit = {
+  entryId: string;
+};
+
 const THEME_KEY = "retro.theme";
 
 // Main application orchestrator:
@@ -108,6 +114,8 @@ function HomeContent() {
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [pendingGroup, setPendingGroup] = useState<PendingGroup | null>(null);
   const [groupNameInput, setGroupNameInput] = useState("");
+  const [pendingEdit, setPendingEdit] = useState<PendingEdit | null>(null);
+  const [editContentInput, setEditContentInput] = useState("");
   const [discussionMode, setDiscussionMode] = useState(false);
   const [discussionQueue, setDiscussionQueue] = useState<DiscussionTopic[]>([]);
   const [discussionIndex, setDiscussionIndex] = useState(0);
@@ -671,6 +679,45 @@ function HomeContent() {
     setGroupNameInput("");
   };
 
+  const openEditEntry = (side: Side, id: string) => {
+    const source = side === "right" ? wentRightItems : wentWrongItems;
+    let existingText = "";
+    for (const item of source) {
+      if (item.kind === "item" && item.id === id) {
+        existingText = item.text;
+        break;
+      }
+      if (item.kind === "group") {
+        const grouped = item.items.find((groupedItem) => groupedItem.id === id);
+        if (grouped) {
+          existingText = grouped.text;
+          break;
+        }
+      }
+    }
+    if (!existingText) return;
+    setPendingEdit({ entryId: id });
+    setEditContentInput(existingText);
+  };
+
+  const saveEditedEntry = () => {
+    if (!pendingEdit) return;
+    const nextContent = editContentInput.trim();
+    if (!nextContent) return;
+    runMutation(() =>
+      updateEntry(sessionSlug, participantToken, pendingEdit.entryId, nextContent),
+    )
+      .then(() => {
+        setPendingEdit(null);
+        setEditContentInput("");
+      })
+      .catch((error: unknown) => {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to update entry",
+        );
+      });
+  };
+
   const handleDropOnPanel = (targetSide: Side) => {
     if (!dragging) return;
 
@@ -809,6 +856,52 @@ function HomeContent() {
             </Button>
             <Button type="button" onClick={createPendingGroup}>
               Create Group
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(pendingEdit)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingEdit(null);
+            setEditContentInput("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Comment</DialogTitle>
+            <DialogDescription>
+              Update your comment text.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            className="mt-4 min-h-[110px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card px-3 py-2 text-retro-strong placeholder:text-retro-subtle"
+            placeholder="Update your comment"
+            value={editContentInput}
+            onChange={(event) => setEditContentInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                saveEditedEntry();
+              }
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPendingEdit(null);
+                setEditContentInput("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={saveEditedEntry}>
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1126,8 +1219,9 @@ function HomeContent() {
           <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
             {discussionMode ? (
               <section className="relative col-span-2 min-h-[220px] overflow-hidden rounded-[18px] border border-retro-border-soft bg-retro-surface p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/40 before:to-white/0 before:content-[''] dark:before:bg-none max-[840px]:col-span-1 max-[840px]:min-h-[200px]">
-                <div className="relative z-10 min-h-[320px]">
-                  {happinessMode ? (
+                <div className="relative z-10 flex min-h-[320px] flex-col">
+                  <div className="flex-1">
+                    {happinessMode ? (
                     <div className="max-w-xl">
                       <p className="text-sm text-retro-muted">
                         Session complete
@@ -1190,47 +1284,48 @@ function HomeContent() {
                         </p>
                       )}
                     </div>
-                  ) : currentDiscussion ? (
-                    <>
+                    ) : currentDiscussion ? (
+                      <>
+                        <p className="text-sm text-retro-muted">
+                          {currentDiscussion.side === "right"
+                            ? "What went right"
+                            : "What went wrong"}{" "}
+                          · {currentDiscussion.votes} votes
+                        </p>
+                        <div className="mt-2 flex items-start gap-3">
+                          {currentDiscussion.kind === "item" && currentDiscussionEntryId
+                            ? entryBadge(currentDiscussionEntryId, "md")
+                            : null}
+                          <h2 className="break-words text-[26px] leading-[1.2] font-medium text-retro-heading">
+                            {currentDiscussion.title}
+                          </h2>
+                        </div>
+                        {currentDiscussion.kind === "group" ? (
+                          <ul className="mt-4 flex list-none flex-col gap-2 p-0">
+                            {(currentDiscussionEntry?.kind === "group"
+                              ? currentDiscussionEntry.items
+                              : []
+                            ).map((item) => (
+                              <li
+                                key={item.id}
+                                className="flex items-start gap-2 rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2 text-sm text-retro-strong"
+                              >
+                                {entryBadge(item.id)}
+                                <span className="break-words">{item.text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </>
+                    ) : (
                       <p className="text-sm text-retro-muted">
-                        {currentDiscussion.side === "right"
-                          ? "What went right"
-                          : "What went wrong"}{" "}
-                        · {currentDiscussion.votes} votes
+                        No topics available yet.
                       </p>
-                      <div className="mt-2 flex items-start gap-3">
-                        {currentDiscussion.kind === "item" && currentDiscussionEntryId
-                          ? entryBadge(currentDiscussionEntryId, "md")
-                          : null}
-                        <h2 className="text-[26px] leading-[1.2] font-medium text-retro-heading">
-                          {currentDiscussion.title}
-                        </h2>
-                      </div>
-                      {currentDiscussion.kind === "group" ? (
-                        <ul className="mt-4 flex list-none flex-col gap-2 p-0">
-                          {(currentDiscussionEntry?.kind === "group"
-                            ? currentDiscussionEntry.items
-                            : []
-                          ).map((item) => (
-                            <li
-                              key={item.id}
-                              className="flex items-start gap-2 rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2 text-sm text-retro-strong"
-                            >
-                              {entryBadge(item.id)}
-                              <span>{item.text}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="text-sm text-retro-muted">
-                      No topics available yet.
-                    </p>
-                  )}
+                    )}
+                  </div>
 
                   {happinessMode && !happinessSubmitted ? (
-                    <div className="absolute right-0 bottom-0">
+                    <div className="mt-6 flex justify-end">
                       <Button
                         type="button"
                         onClick={() => {
@@ -1257,11 +1352,11 @@ function HomeContent() {
                   ) : null}
 
                   {!happinessMode && currentDiscussion ? (
-                    <>
-                      <span className="absolute bottom-1 left-0 text-sm text-retro-muted">
+                    <div className="mt-6 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-stretch">
+                      <span className="text-sm text-retro-muted">
                         {discussionIndex + 1}/{discussionQueue.length}
                       </span>
-                      <div className="absolute right-0 bottom-0 flex items-center gap-2">
+                      <div className="flex items-center gap-2 self-end max-[640px]:self-stretch max-[640px]:justify-end">
                         <Button
                           type="button"
                           variant="outline"
@@ -1288,7 +1383,7 @@ function HomeContent() {
                           </Button>
                         )}
                       </div>
-                    </>
+                    </div>
                   ) : null}
                 </div>
               </section>
@@ -1321,9 +1416,11 @@ function HomeContent() {
                   onDragEnd={() => setDragging(null)}
                   onToggleVote={toggleVote}
                   onRemove={removeItem}
+                  onEdit={openEditEntry}
                   canRemove={(id) =>
                     isAdmin || entryAuthorMap.get(id) === viewerId
                   }
+                  canEdit={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
                   onUndoGroupedItem={undoGroupedItem}
                   renderEntryBadge={entryBadge}
                 />
@@ -1355,9 +1452,11 @@ function HomeContent() {
                   onDragEnd={() => setDragging(null)}
                   onToggleVote={toggleVote}
                   onRemove={removeItem}
+                  onEdit={openEditEntry}
                   canRemove={(id) =>
                     isAdmin || entryAuthorMap.get(id) === viewerId
                   }
+                  canEdit={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
                   onUndoGroupedItem={undoGroupedItem}
                   renderEntryBadge={entryBadge}
                 />

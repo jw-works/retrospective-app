@@ -368,6 +368,31 @@ export const backendStore = {
     });
   },
 
+  // Updates one entry content with permission checks (admin or author).
+  async updateEntry(input: { slug: string; token: string; entryId: string; content: string }) {
+    return withStoreLock((store) => {
+      const session = getSessionBySlug(store, input.slug);
+      if (!session) throw new Error("Session not found");
+
+      const participant = getParticipantByToken(store, input.token, session.id);
+      const entry = store.entries.find((item) => item.id === input.entryId && item.sessionId === session.id);
+      if (!entry) throw new Error("Entry not found");
+
+      if (!participant.isAdmin && entry.authorParticipantId !== participant.id) {
+        throw new Error("Forbidden");
+      }
+
+      const nextContent = input.content.trim();
+      if (!nextContent) throw new Error("Entry content is required");
+
+      entry.content = nextContent;
+      session.updatedAt = nowIso();
+      logInfo("entry.updated", { sessionId: session.id, entryId: entry.id, actorParticipantId: participant.id });
+
+      return entry;
+    });
+  },
+
   // Admin-only bulk clear for session entries/groups/votes.
   async clearEntries(input: { slug: string; token: string }) {
     return withStoreLock((store) => {

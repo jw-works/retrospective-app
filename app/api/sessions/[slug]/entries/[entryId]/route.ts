@@ -16,3 +16,22 @@ export async function DELETE(
     return mapErrorToResponse(error);
   }
 }
+
+// Updates one entry content (permission checks are enforced in store layer).
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ slug: string; entryId: string }> }
+) {
+  try {
+    const { slug, entryId } = await params;
+    const token = requireToken(request);
+    const body = (await request.json()) as { content?: string };
+    const content = body.content?.trim() ?? "";
+    if (!content) return NextResponse.json({ error: "Entry content is required" }, { status: 400 });
+
+    const entry = await backendStore.updateEntry({ slug, token, entryId, content });
+    return NextResponse.json({ entry });
+  } catch (error) {
+    return mapErrorToResponse(error);
+  }
+}

@@ -108,6 +108,15 @@ export async function deleteEntry(slug: string, token: string, entryId: string) 
   await authedRequest(`/api/sessions/${slug}/entries/${entryId}`, token, { method: "DELETE" }, "Unable to delete entry");
 }
 
+export async function updateEntry(slug: string, token: string, entryId: string, content: string) {
+  await authedRequest(
+    `/api/sessions/${slug}/entries/${entryId}`,
+    token,
+    { method: "PATCH", body: JSON.stringify({ content }) },
+    "Unable to update entry"
+  );
+}
+
 export async function voteEntry(slug: string, token: string, entryId: string) {
   await authedRequest(
     `/api/sessions/${slug}/votes`,

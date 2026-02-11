@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { RetroEntry, Side } from "@/lib/discussion";
 
 // Reusable board column used by both "went right" and "went wrong" sections.
@@ -18,7 +18,9 @@ type RetroColumnProps = {
   onDragEnd: () => void;
   onToggleVote: (side: Side, id: string) => void;
   onRemove: (side: Side, id: string) => void;
+  onEdit: (side: Side, id: string) => void;
   canRemove: (id: string) => boolean;
+  canEdit: (id: string) => boolean;
   onUndoGroupedItem: (side: Side, groupId: string, itemId: string) => void;
   renderEntryBadge: (entryId: string) => ReactNode;
 };
@@ -37,7 +39,9 @@ export function RetroColumn({
   onDragEnd,
   onToggleVote,
   onRemove,
+  onEdit,
   canRemove,
+  canEdit,
   onUndoGroupedItem,
   renderEntryBadge
 }: RetroColumnProps) {
@@ -53,13 +57,13 @@ export function RetroColumn({
       <h2 className="m-0 text-lg font-medium text-retro-strong">{title}</h2>
       <div className="mt-[14px]">
         <div className="relative">
-          <Input
-            className="block h-[42px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card px-3 pr-11 text-retro-strong placeholder:text-retro-subtle"
-            placeholder="Type and press enter"
+          <Textarea
+            className="block min-h-[86px] w-full resize-y rounded-[10px] border border-retro-border-soft bg-retro-card px-3 py-2 pr-11 text-retro-strong placeholder:text-retro-subtle"
+            placeholder="Type your comment. Enter to add, Shift+Enter for newline."
             value={inputValue}
             onChange={(event) => onInputChange(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 onAdd();
               }
@@ -69,7 +73,7 @@ export function RetroColumn({
             type="button"
             aria-label="Add"
             onClick={onAdd}
-            className="absolute top-1/2 right-2 grid size-8 -translate-y-1/2 place-items-center rounded-[10px] border border-retro-border-soft bg-retro-card-hover text-retro-body active:translate-y-[calc(-50%+1px)]"
+            className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-[10px] border border-retro-border-soft bg-retro-card-hover text-retro-body active:translate-y-px"
           >
             <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-none stroke-current stroke-[2.2]">
               <path d="M12 5v14" />
@@ -118,26 +122,47 @@ export function RetroColumn({
                       className="flex cursor-grab items-center justify-between gap-2 rounded-[10px] border border-retro-border-soft bg-retro-card-strong px-2.5 py-1.5 text-[13px] text-retro-strong active:cursor-grabbing"
                       title="Drag out to ungroup"
                     >
-                      <span className="flex min-w-0 flex-1 items-start gap-2">
-                        {renderEntryBadge(groupedItem.id)}
-                        <span className="min-w-0 break-words">{groupedItem.text}</span>
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="Undo from group"
-                        title="Undo from group"
-                        className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-retro-border-soft bg-retro-card-hover text-retro-body"
-                        onMouseDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onUndoGroupedItem(side, item.id, groupedItem.id);
-                        }}
-                      >
-                        <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-none stroke-current stroke-[2]">
-                          <path d="M9 7 5 11l4 4" />
-                          <path d="M5 11h7a5 5 0 1 1 0 10h-3" />
-                        </svg>
-                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words">{groupedItem.text}</p>
+                        <div className="mt-1 flex w-full items-end justify-between gap-2">
+                          <span>{renderEntryBadge(groupedItem.id)}</span>
+                          <span className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              aria-label="Edit comment"
+                              title="Edit comment"
+                              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-retro-border-soft bg-retro-card-hover text-retro-body"
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onEdit(side, groupedItem.id);
+                              }}
+                              disabled={!canEdit(groupedItem.id)}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-none stroke-current stroke-[2]">
+                                <path d="m4 20 4-1 9.8-9.8a1.4 1.4 0 0 0 0-2L16.8 6a1.4 1.4 0 0 0-2 0L5 15.8 4 20Z" />
+                                <path d="m13.5 7.5 3 3" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Undo from group"
+                              title="Undo from group"
+                              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-retro-border-soft bg-retro-card-hover text-retro-body"
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onUndoGroupedItem(side, item.id, groupedItem.id);
+                              }}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-none stroke-current stroke-[2]">
+                                <path d="M9 7 5 11l4 4" />
+                                <path d="M5 11h7a5 5 0 1 1 0 10h-3" />
+                              </svg>
+                            </button>
+                          </span>
+                        </div>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -158,6 +183,16 @@ export function RetroColumn({
                 >
                   ↑
                 </button>
+                {item.kind === "item" && canEdit(item.id) ? (
+                  <button
+                    type="button"
+                    aria-label="Edit"
+                    onClick={() => onEdit(side, item.id)}
+                    className="h-[30px] w-[30px] rounded-[10px] border border-retro-border-soft bg-retro-card-hover text-center leading-7 text-retro-body"
+                  >
+                    ✎
+                  </button>
+                ) : null}
                 {canRemove(item.id) ? (
                   <button
                     type="button"
