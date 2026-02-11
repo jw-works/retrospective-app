@@ -7,6 +7,7 @@ import type {
   Entry,
   EntryGroup,
   EntryType,
+  ActionItem,
   HappinessCheck,
   NavigationState,
   Participant,
@@ -30,6 +31,7 @@ const createInitialData = (): StoreData => ({
   participants: [],
   entries: [],
   groups: [],
+  actionItems: [],
   votes: [],
   happinessChecks: [],
   navigation: [],
@@ -68,6 +70,7 @@ async function readStore(): Promise<StoreData> {
           groupId: entry.groupId ?? null
         })),
         groups: parsed.groups ?? [],
+        actionItems: parsed.actionItems ?? [],
         votes: parsed.votes ?? [],
         happinessChecks: parsed.happinessChecks ?? [],
         navigation: parsed.navigation ?? [],
@@ -194,16 +197,21 @@ function sessionStateFromStore(store: StoreData, session: Session, viewer: Parti
     }));
 
   const groups = store.groups.filter((group) => group.sessionId === session.id);
+  const actionItems = store.actionItems.filter((item) => item.sessionId === session.id);
 
   const sessionHappiness = store.happinessChecks.filter((item) => item.sessionId === session.id);
   const happinessTotal = sessionHappiness.reduce((sum, item) => sum + item.score, 0);
   const happinessAverage = sessionHappiness.length > 0 ? Number((happinessTotal / sessionHappiness.length).toFixed(2)) : null;
+  const viewerSubmitted = viewer
+    ? sessionHappiness.some((item) => item.participantId === viewer.id)
+    : false;
 
   return {
     session: {
       id: session.id,
       slug: session.slug,
       title: session.title,
+      sprintLabel: session.sprintLabel ?? null,
       phase: session.phase,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt
@@ -211,6 +219,7 @@ function sessionStateFromStore(store: StoreData, session: Session, viewer: Parti
     participants,
     entries,
     groups,
+    actionItems,
     navigation: getNavigation(store, session.id),
     viewer: viewer
       ? {
@@ -223,14 +232,15 @@ function sessionStateFromStore(store: StoreData, session: Session, viewer: Parti
       : null,
     happiness: {
       average: happinessAverage,
-      count: sessionHappiness.length
+      count: sessionHappiness.length,
+      viewerSubmitted
     }
   };
 }
 
 export const backendStore = {
   // Creates a session, admin participant, initial navigation state, and token.
-  async createSession(input: { title: string; adminName: string }) {
+  async createSession(input: { title: string; adminName: string; sprintLabel?: string }) {
     return withStoreLock((store) => {
       const now = nowIso();
       const sessionId = randomUUID();
@@ -239,6 +249,7 @@ export const backendStore = {
         id: sessionId,
         slug: buildSlug(input.title),
         title: input.title.trim(),
+        sprintLabel: input.sprintLabel?.trim() || null,
         createdByParticipantId: participantId,
         phase: "collecting",
         createdAt: now,
@@ -409,6 +420,56 @@ export const backendStore = {
       session.updatedAt = nowIso();
       logInfo("entries.cleared", { sessionId: session.id, actorParticipantId: participant.id });
 
+      return { success: true };
+    });
+  },
+
+  // Admin-only action-item creation for sprint follow-ups.
+  async createActionItem(input: { slug: string; token: string; content: string }) {
+    return withStoreLock((store) => {
+      const session = getSessionBySlug(store, input.slug);
+      if (!session) throw new Error("Session not found");
+      const participant = getParticipantByToken(store, input.token, session.id);
+      assertAdmin(participant);
+
+      const content = input.content.trim();
+      if (!content) throw new Error("Action item content is required");
+
+      const item: ActionItem = {
+        id: randomUUID(),
+        sessionId: session.id,
+        createdByParticipantId: participant.id,
+        content,
+        createdAt: nowIso()
+      };
+
+      store.actionItems.push(item);
+      session.updatedAt = nowIso();
+      logInfo("action_item.created", { sessionId: session.id, actionItemId: item.id, actorParticipantId: participant.id });
+      return item;
+    });
+  },
+
+  // Admin-only action-item deletion.
+  async deleteActionItem(input: { slug: string; token: string; actionItemId: string }) {
+    return withStoreLock((store) => {
+      const session = getSessionBySlug(store, input.slug);
+      if (!session) throw new Error("Session not found");
+      const participant = getParticipantByToken(store, input.token, session.id);
+      assertAdmin(participant);
+
+      const exists = store.actionItems.some(
+        (item) => item.id === input.actionItemId && item.sessionId === session.id
+      );
+      if (!exists) throw new Error("Action item not found");
+
+      store.actionItems = store.actionItems.filter((item) => item.id !== input.actionItemId);
+      session.updatedAt = nowIso();
+      logInfo("action_item.deleted", {
+        sessionId: session.id,
+        actionItemId: input.actionItemId,
+        actorParticipantId: participant.id
+      });
       return { success: true };
     });
   },
@@ -616,7 +677,7 @@ export const backendStore = {
       nav.discussionEntryId = input.discussionEntryId ?? null;
       nav.updatedAt = nowIso();
 
-      if (input.activeSection === "discussion") {
+      if (input.activeSection === "discussion" || input.activeSection === "actions" || input.activeSection === "happiness") {
         session.phase = "discussing";
       } else if (input.activeSection === "done") {
         session.phase = "finished";

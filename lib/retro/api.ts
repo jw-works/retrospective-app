@@ -35,7 +35,7 @@ function toApiError(payload: unknown): ApiError {
   return {};
 }
 
-export async function createSession(input: { title: string; adminName: string }): Promise<CreateSessionResult> {
+export async function createSession(input: { title: string; adminName: string; sprintLabel?: string }): Promise<CreateSessionResult> {
   const response = await fetch("/api/sessions", {
     method: "POST",
     headers: headers(),
@@ -172,5 +172,23 @@ export async function upsertHappiness(slug: string, token: string, score: number
     token,
     { method: "POST", body: JSON.stringify({ score }) },
     "Unable to submit happiness"
+  );
+}
+
+export async function createActionItem(slug: string, token: string, content: string) {
+  await authedRequest(
+    `/api/sessions/${slug}/actions`,
+    token,
+    { method: "POST", body: JSON.stringify({ content }) },
+    "Unable to create action item"
+  );
+}
+
+export async function deleteActionItem(slug: string, token: string, actionItemId: string) {
+  await authedRequest(
+    `/api/sessions/${slug}/actions/${actionItemId}`,
+    token,
+    { method: "DELETE" },
+    "Unable to delete action item"
   );
 }

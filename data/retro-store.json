@@ -1,1 +1,267 @@
-{}
+{
+  "sessions": [
+    {
+      "id": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "slug": "justforfix-74aswb",
+      "title": "JustForFix",
+      "sprintLabel": "544",
+      "createdByParticipantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "phase": "discussing",
+      "createdAt": "2026-02-11T17:37:39.360Z",
+      "updatedAt": "2026-02-11T17:49:58.999Z"
+    }
+  ],
+  "participants": [
+    {
+      "id": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-11T17:37:39.360Z"
+    },
+    {
+      "id": "504b5236-c37b-4a0e-99ed-280c0fd9002e",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "name": "Conor Shand",
+      "isAdmin": false,
+      "createdAt": "2026-02-11T17:38:08.496Z"
+    },
+    {
+      "id": "4ebc8e38-1791-40c3-89b5-511629aef9e1",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "name": "Ruth Iverson",
+      "isAdmin": false,
+      "createdAt": "2026-02-11T17:38:29.945Z"
+    },
+    {
+      "id": "84409859-fc14-403b-b51d-a43c6d0bf232",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "name": "Brian Vorge",
+      "isAdmin": false,
+      "createdAt": "2026-02-11T17:38:48.756Z"
+    },
+    {
+      "id": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "name": "John Wilson",
+      "isAdmin": false,
+      "createdAt": "2026-02-11T17:39:24.256Z"
+    }
+  ],
+  "entries": [
+    {
+      "id": "871ae802-638e-45bd-a369-6c5018b44614",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "authorParticipantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "type": "went_right",
+      "content": "Okay lets start here",
+      "groupId": "fb413770-447a-4568-a9b6-a3305a42cae9",
+      "createdAt": "2026-02-11T17:37:57.895Z"
+    },
+    {
+      "id": "5b7ee206-a860-45e4-8512-2a16144f85e6",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "authorParticipantId": "504b5236-c37b-4a0e-99ed-280c0fd9002e",
+      "type": "went_right",
+      "content": "Well well well",
+      "groupId": null,
+      "createdAt": "2026-02-11T17:38:16.523Z"
+    },
+    {
+      "id": "f005175b-a5aa-4b62-befc-9965b164bf6a",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "authorParticipantId": "4ebc8e38-1791-40c3-89b5-511629aef9e1",
+      "type": "went_right",
+      "content": "Hello!! This is cool!",
+      "groupId": "fb413770-447a-4568-a9b6-a3305a42cae9",
+      "createdAt": "2026-02-11T17:38:38.161Z"
+    },
+    {
+      "id": "b880e56c-aa2a-4250-b1e9-9e90e524a37e",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "authorParticipantId": "84409859-fc14-403b-b51d-a43c6d0bf232",
+      "type": "went_right",
+      "content": "Im here",
+      "groupId": null,
+      "createdAt": "2026-02-11T17:38:54.721Z"
+    },
+    {
+      "id": "e61e9356-09ae-47cf-b309-78030737fc78",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "authorParticipantId": "84409859-fc14-403b-b51d-a43c6d0bf232",
+      "type": "went_wrong",
+      "content": "Need a coffee from starbucks though",
+      "groupId": null,
+      "createdAt": "2026-02-11T17:39:01.203Z"
+    },
+    {
+      "id": "1825da3b-4162-451e-b7fd-74104dd3060c",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "authorParticipantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "type": "went_right",
+      "content": "hello friendly folks, how are we doing ?",
+      "groupId": null,
+      "createdAt": "2026-02-11T17:39:31.004Z"
+    },
+    {
+      "id": "ca09aa63-1697-490c-9960-eeb98dd2322b",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "authorParticipantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "type": "went_wrong",
+      "content": "Seems like I need to iron out from bugs",
+      "groupId": null,
+      "createdAt": "2026-02-11T17:39:40.419Z"
+    }
+  ],
+  "groups": [
+    {
+      "id": "fb413770-447a-4568-a9b6-a3305a42cae9",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "type": "went_right",
+      "name": "Group?",
+      "createdAt": "2026-02-11T17:40:51.636Z"
+    }
+  ],
+  "actionItems": [
+    {
+      "id": "74098a93-1725-48f3-878a-436b866a6654",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "createdByParticipantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "content": "Finish all sprint goals",
+      "createdAt": "2026-02-11T17:46:21.944Z"
+    }
+  ],
+  "votes": [
+    {
+      "id": "dc2dce0b-8c34-4edb-85de-3c2b0b826f08",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "1825da3b-4162-451e-b7fd-74104dd3060c",
+      "participantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "value": 1,
+      "createdAt": "2026-02-11T17:39:48.103Z"
+    },
+    {
+      "id": "0df11f37-5f52-4358-9b2f-01ffc2422065",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "b880e56c-aa2a-4250-b1e9-9e90e524a37e",
+      "participantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "value": 1,
+      "createdAt": "2026-02-11T17:39:48.441Z"
+    },
+    {
+      "id": "d3fec05d-babb-46d7-bf92-cf7ad2dc2cf8",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "f005175b-a5aa-4b62-befc-9965b164bf6a",
+      "participantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "value": 1,
+      "createdAt": "2026-02-11T17:39:49.871Z"
+    },
+    {
+      "id": "39103e04-0305-4d73-a65a-28772f86945f",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "ca09aa63-1697-490c-9960-eeb98dd2322b",
+      "participantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "value": 1,
+      "createdAt": "2026-02-11T17:39:52.723Z"
+    },
+    {
+      "id": "e46513c8-7042-43d1-aef9-8f70318faa9e",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "871ae802-638e-45bd-a369-6c5018b44614",
+      "participantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "value": 1,
+      "createdAt": "2026-02-11T17:39:53.925Z"
+    },
+    {
+      "id": "b97c8bcc-a9da-4ddf-b047-45e0521ed850",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "1825da3b-4162-451e-b7fd-74104dd3060c",
+      "participantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "value": 1,
+      "createdAt": "2026-02-11T17:40:04.888Z"
+    },
+    {
+      "id": "2c0326c8-d839-41e6-a45e-0695db70c63a",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "871ae802-638e-45bd-a369-6c5018b44614",
+      "participantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "value": 1,
+      "createdAt": "2026-02-11T17:40:06.548Z"
+    },
+    {
+      "id": "4c6b06c2-6f00-4d27-80cb-75732dd371c5",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "e61e9356-09ae-47cf-b309-78030737fc78",
+      "participantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "value": 1,
+      "createdAt": "2026-02-11T17:40:07.928Z"
+    },
+    {
+      "id": "b3d68804-e16a-4e6d-951f-55d67e21bb10",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "b880e56c-aa2a-4250-b1e9-9e90e524a37e",
+      "participantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "value": 1,
+      "createdAt": "2026-02-11T17:40:10.000Z"
+    },
+    {
+      "id": "d071b6dc-a35b-483b-8530-75907d24c9af",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "entryId": "5b7ee206-a860-45e4-8512-2a16144f85e6",
+      "participantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "value": 1,
+      "createdAt": "2026-02-11T17:40:17.645Z"
+    }
+  ],
+  "happinessChecks": [
+    {
+      "id": "81300dcf-8d63-4864-8f30-14f594cc9000",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "participantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
+      "score": 7,
+      "createdAt": "2026-02-11T17:46:30.500Z",
+      "updatedAt": "2026-02-11T17:46:30.500Z"
+    },
+    {
+      "id": "334bc0fb-e007-4b9d-b947-1546be1c8731",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "participantId": "84409859-fc14-403b-b51d-a43c6d0bf232",
+      "score": 7,
+      "createdAt": "2026-02-11T17:46:54.991Z",
+      "updatedAt": "2026-02-11T17:46:54.991Z"
+    },
+    {
+      "id": "17aaca9f-257c-42f7-bca9-c41fd29d9532",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "participantId": "a31453d4-fc38-4d4d-aaad-b17184b63b01",
+      "score": 7,
+      "createdAt": "2026-02-11T17:46:57.624Z",
+      "updatedAt": "2026-02-11T17:46:57.624Z"
+    },
+    {
+      "id": "2322b460-86fc-48f2-af4f-41c5248b8f55",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "participantId": "4ebc8e38-1791-40c3-89b5-511629aef9e1",
+      "score": 7,
+      "createdAt": "2026-02-11T17:47:00.516Z",
+      "updatedAt": "2026-02-11T17:47:00.516Z"
+    },
+    {
+      "id": "9ddf7c53-aa4f-41ce-933e-f1b73ad026b2",
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "participantId": "504b5236-c37b-4a0e-99ed-280c0fd9002e",
+      "score": 7,
+      "createdAt": "2026-02-11T17:47:07.142Z",
+      "updatedAt": "2026-02-11T17:47:07.142Z"
+    }
+  ],
+  "navigation": [
+    {
+      "sessionId": "d9c978e2-2777-4b55-a1a0-7ccecf84d67b",
+      "activeSection": "happiness",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-11T17:49:58.999Z"
+    }
+  ],
+  "authTokens": []
+}

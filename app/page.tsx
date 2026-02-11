@@ -2,22 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Moon, Share2, Sun } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   buildDiscussionQueue,
   sortEntries,
@@ -26,7 +11,11 @@ import {
   type Side,
 } from "@/lib/discussion";
 import type { SessionStateResponse } from "@/lib/backend/types";
-import { RetroColumn } from "@/components/retro/retro-column";
+import { AppShellHeader } from "@/components/retro/app-shell-header";
+import { EditCommentDialog } from "@/components/retro/edit-comment-dialog";
+import { GroupNameDialog } from "@/components/retro/group-name-dialog";
+import { SessionScreen } from "@/components/retro/session-screen";
+import { SetupScreen } from "@/components/retro/setup-screen";
 import {
   colorToneIndexFromSeed,
   initialsFromName,
@@ -39,9 +28,11 @@ import {
   createGroup,
   createSession,
   deleteEntry,
+  deleteActionItem,
   getSessionState,
   joinSession,
   moveEntry,
+  createActionItem,
   setNavigation,
   ungroupEntry,
   updateEntry,
@@ -96,6 +87,7 @@ function HomeContent() {
   const inviteSlugFromUrl = parseSessionCode(searchParams.get("join") ?? "");
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [teamName, setTeamName] = useState("");
+  const [sprintLabel, setSprintLabel] = useState("");
   const [adminName, setAdminName] = useState("");
   const [joinSessionCode, setJoinSessionCode] = useState("");
   const [joinParticipantName, setJoinParticipantName] = useState("");
@@ -122,14 +114,32 @@ function HomeContent() {
   const [happinessMode, setHappinessMode] = useState(false);
   const [happinessScore, setHappinessScore] = useState(7);
   const [happinessSubmitted, setHappinessSubmitted] = useState(false);
+  const [actionItemInput, setActionItemInput] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const sessionId = sessionSlug || "SES-7K2P9M";
+  const activeSprintLabel = sessionState?.session.sprintLabel?.trim() || sprintLabel.trim();
+  const sprintDisplayLabel = activeSprintLabel
+    ? activeSprintLabel.toLowerCase().startsWith("sprint")
+      ? activeSprintLabel
+      : `Sprint ${activeSprintLabel}`
+    : "Sprint";
+  const nextSprintDisplayLabel = useMemo(() => {
+    if (!activeSprintLabel) return "";
+    const numericMatch = activeSprintLabel.match(/\d+/);
+    if (!numericMatch) return sprintDisplayLabel;
+    const nextSprintNumber = Number(numericMatch[0]) + 1;
+    return `Sprint ${nextSprintNumber}`;
+  }, [activeSprintLabel, sprintDisplayLabel]);
 
   const currentStage = sessionState
     ? sessionState.navigation.activeSection === "discussion"
       ? "discussion"
+      : sessionState.navigation.activeSection === "actions"
+        ? "actionItems"
       : sessionState.navigation.activeSection === "happiness"
-        ? "happinessCheck"
+        ? happinessSubmitted
+          ? "done"
+          : "happinessCheck"
         : sessionState.navigation.activeSection === "done"
           ? "done"
           : "retro"
@@ -140,10 +150,11 @@ function HomeContent() {
           ? "done"
           : "happinessCheck"
         : "discussion";
-  const stageOrder = ["retro", "discussion", "happinessCheck", "done"] as const;
+  const stageOrder = ["retro", "discussion", "actionItems", "happinessCheck", "done"] as const;
   const stageLabel: Record<(typeof stageOrder)[number], string> = {
     retro: "Retro",
     discussion: "Discussion",
+    actionItems: "Action Items",
     happinessCheck: "Happiness Check",
     done: "Done",
   };
@@ -247,11 +258,15 @@ function HomeContent() {
   const overallHappinessAverage = sessionState?.happiness.average ?? null;
   const allHappinessSubmitted =
     totalParticipants > 0 && submittedHappinessCount >= totalParticipants;
+  const actionItems = sessionState?.actionItems ?? [];
+  const actionsMode = sessionState?.navigation.activeSection === "actions";
+  const summaryMode = happinessMode && happinessSubmitted;
 
   // Normalizes server state into the local UI model.
   const applySessionState = useCallback((state: SessionStateResponse) => {
     setSessionState(state);
     setTeamName(state.session.title);
+    setSprintLabel(state.session.sprintLabel ?? "");
     const admin = state.participants.find((participant) => participant.isAdmin);
     if (admin) setAdminName(admin.name);
     const nextRight = toRetroItems(state.entries, state.groups, "went_right");
@@ -273,12 +288,14 @@ function HomeContent() {
 
     setDiscussionMode(
       state.navigation.activeSection === "discussion" ||
+        state.navigation.activeSection === "actions" ||
         state.navigation.activeSection === "happiness",
     );
     setHappinessMode(
       state.navigation.activeSection === "happiness" ||
         state.navigation.activeSection === "done",
     );
+    setHappinessSubmitted(state.happiness.viewerSubmitted);
   }, []);
 
   // Single read path used for initial load and polling refreshes.
@@ -289,6 +306,16 @@ function HomeContent() {
     },
     [applySessionState],
   );
+
+  const isRecoverableSessionError = useCallback((error: unknown) => {
+    if (!(error instanceof Error)) return false;
+    const message = error.message.toLowerCase();
+    return (
+      message.includes("session not found") ||
+      message.includes("unauthorized") ||
+      message.includes("token expired")
+    );
+  }, []);
 
   // Mutation helper that always refreshes canonical session state after writes.
   const runMutation = useCallback(
@@ -312,6 +339,7 @@ function HomeContent() {
     setSessionState(null);
     setWentRightItems([]);
     setWentWrongItems([]);
+    setSprintLabel("");
     setDiscussionQueue([]);
     setDiscussionIndex(0);
     setDiscussionMode(false);
@@ -392,23 +420,46 @@ function HomeContent() {
     setParticipantToken(token);
     setIsSetupComplete(true);
     loadSessionState(targetSlug, token).catch((error: unknown) => {
+      if (isRecoverableSessionError(error)) {
+        clearStoredToken(targetSlug);
+        clearStoredActiveSlug();
+        setSessionSlug("");
+        setParticipantToken("");
+        setSessionState(null);
+        setWentRightItems([]);
+        setWentWrongItems([]);
+        setIsSetupComplete(false);
+        setApiError("Saved session no longer exists. Please create or join a new session.");
+        router.replace("/");
+        return;
+      }
       setApiError(
         error instanceof Error
           ? error.message
           : "Unable to restore previous session",
       );
     });
-  }, [inviteSlugFromUrl, loadSessionState]);
+  }, [inviteSlugFromUrl, isRecoverableSessionError, loadSessionState, router]);
 
   useEffect(() => {
     if (!sessionSlug || !participantToken || !isSetupComplete) return;
     const interval = setInterval(() => {
-      loadSessionState(sessionSlug, participantToken).catch(() => {
-        // Keep polling resilient; explicit action errors are shown in button handlers.
+      loadSessionState(sessionSlug, participantToken).catch((error: unknown) => {
+        // Keep polling resilient; recover only when session/token is no longer valid.
+        if (!isRecoverableSessionError(error)) return;
+        setApiError("This session is no longer available. Please create or join a new session.");
+        resetToCreateSession();
       });
     }, 3000);
     return () => clearInterval(interval);
-  }, [isSetupComplete, loadSessionState, participantToken, sessionSlug]);
+  }, [
+    isRecoverableSessionError,
+    isSetupComplete,
+    loadSessionState,
+    participantToken,
+    resetToCreateSession,
+    sessionSlug,
+  ]);
 
   useEffect(() => {
     if (!isSetupComplete) return;
@@ -459,6 +510,29 @@ function HomeContent() {
       );
     }
   }, [canJoinSession, joinParticipantName, joinSessionCode, loadSessionState]);
+
+  const launchSession = useCallback(async () => {
+    if (!canEnterRetro) return;
+    try {
+      setApiError(null);
+      const payload = await createSession({
+        title: teamName.trim(),
+        adminName: adminName.trim(),
+        sprintLabel: sprintLabel.trim(),
+      });
+      const slug = payload.session.slug;
+      setStoredActiveSlug(slug);
+      setStoredToken(slug, payload.token);
+      setSessionSlug(slug);
+      setParticipantToken(payload.token);
+      setIsSetupComplete(true);
+      await loadSessionState(slug, payload.token);
+    } catch (error) {
+      setApiError(
+        error instanceof Error ? error.message : "Unable to create session",
+      );
+    }
+  }, [adminName, canEnterRetro, loadSessionState, sprintLabel, teamName]);
 
   const addStandaloneItem = (side: Side, text: string) => {
     const type = side === "right" ? "went_right" : "went_wrong";
@@ -800,723 +874,213 @@ function HomeContent() {
     if (!isAdmin) return;
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
-        activeSection: "happiness",
+        activeSection: "actions",
         discussionEntryId: null,
       }),
     ).catch((error: unknown) => {
       setApiError(
         error instanceof Error
           ? error.message
-          : "Unable to move to happiness check",
+          : "Unable to move to action items",
       );
     });
   };
 
+  const addActionItem = () => {
+    if (!isAdmin) return;
+    const next = actionItemInput.trim();
+    if (!next) return;
+    runMutation(() => createActionItem(sessionSlug, participantToken, next))
+      .then(() => setActionItemInput(""))
+      .catch((error: unknown) => {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to create action item",
+        );
+      });
+  };
+
+  const removeActionItem = (actionItemId: string) => {
+    if (!isAdmin) return;
+    runMutation(() => deleteActionItem(sessionSlug, participantToken, actionItemId)).catch(
+      (error: unknown) => {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to delete action item",
+        );
+      },
+    );
+  };
+
+  const proceedToHappiness = () => {
+    if (!isAdmin) return;
+    runMutation(() =>
+      setNavigation(sessionSlug, participantToken, {
+        activeSection: "happiness",
+        discussionEntryId: null,
+      }),
+    ).catch((error: unknown) => {
+      setApiError(
+        error instanceof Error ? error.message : "Unable to move to happiness check",
+      );
+    });
+  };
+
+  const returnToBoard = () => {
+    if (!isAdmin) return;
+    runMutation(() =>
+      setNavigation(sessionSlug, participantToken, {
+        activeSection: "retro",
+      }),
+    ).catch((error: unknown) => {
+      setApiError(
+        error instanceof Error ? error.message : "Unable to return to board",
+      );
+    });
+  };
+
+  const submitHappinessCheck = () => {
+    runMutation(() => upsertHappiness(sessionSlug, participantToken, happinessScore))
+      .then(() => setHappinessSubmitted(true))
+      .catch((error: unknown) => {
+        setApiError(
+          error instanceof Error ? error.message : "Unable to submit happiness",
+        );
+      });
+  };
+
   return (
     <main className="mx-auto my-12 max-w-[1180px] px-7 max-[840px]:my-7">
-      <Dialog
+      <GroupNameDialog
         open={Boolean(pendingGroup)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingGroup(null);
-            setGroupNameInput("");
-          }
+        value={groupNameInput}
+        onValueChange={setGroupNameInput}
+        onClose={() => {
+          setPendingGroup(null);
+          setGroupNameInput("");
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Name New Group</DialogTitle>
-            <DialogDescription>
-              Choose a name for the merged card.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            className="mt-4 block h-[42px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card px-3 text-retro-strong placeholder:text-retro-subtle"
-            placeholder="Group name"
-            value={groupNameInput}
-            onChange={(event) => setGroupNameInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                createPendingGroup();
-              }
-            }}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setPendingGroup(null);
-                setGroupNameInput("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="button" onClick={createPendingGroup}>
-              Create Group
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
+        onCreate={createPendingGroup}
+      />
+      <EditCommentDialog
         open={Boolean(pendingEdit)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingEdit(null);
-            setEditContentInput("");
-          }
+        value={editContentInput}
+        onValueChange={setEditContentInput}
+        onClose={() => {
+          setPendingEdit(null);
+          setEditContentInput("");
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Comment</DialogTitle>
-            <DialogDescription>
-              Update your comment text.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            className="mt-4 min-h-[110px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card px-3 py-2 text-retro-strong placeholder:text-retro-subtle"
-            placeholder="Update your comment"
-            value={editContentInput}
-            onChange={(event) => setEditContentInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault();
-                saveEditedEntry();
-              }
-            }}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setPendingEdit(null);
-                setEditContentInput("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="button" onClick={saveEditedEntry}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onSave={saveEditedEntry}
+      />
 
-      <header className="mb-7 flex items-center justify-between text-sm text-retro-muted">
-        {isSetupComplete ? (
-          <div className="flex items-center gap-2">
-            {stageOrder.map((stage, index) => {
-              const isCurrent = index === currentStageIndex;
-              const isDone = index < currentStageIndex;
-              const isBlocked = index > currentStageIndex;
-
-              return (
-                <div key={stage} className="flex items-center gap-2">
-                  <Badge
-                    className={`inline-flex items-center rounded-full border px-3 py-2 text-xs ${
-                      isCurrent
-                        ? "border-retro-border bg-retro-card-hover text-retro-body"
-                        : isDone
-                          ? "border-retro-border bg-retro-surface-soft text-retro-body"
-                          : "border-retro-border-soft bg-retro-card text-retro-subtle"
-                    }`}
-                  >
-                    {stageLabel[stage]}
-                  </Badge>
-                  {index < stageOrder.length - 1 ? (
-                    <span className="text-retro-subtle">›</span>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <Badge className="inline-flex items-center gap-2 rounded-full border border-retro-border bg-retro-surface-soft px-3 py-2 text-xs text-retro-strong before:size-1.5 before:rounded-full before:bg-retro-dot before:content-['']">
-              Session Launchpad
-            </Badge>
-            <span className="text-xs text-retro-subtle">
-              Create your retrospective room
-            </span>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Toggle dark mode"
-            className="grid size-[34px] place-items-center rounded-full border border-retro-border bg-retro-surface-soft text-retro-strong"
-            onClick={() =>
-              setTheme((current) => (current === "dark" ? "light" : "dark"))
-            }
-          >
-            {theme === "dark" ? (
-              <Sun className="size-4" />
-            ) : (
-              <Moon className="size-4" />
-            )}
-          </button>
-          <Avatar
-            className={`identity-badge identity-tone-${currentUserTone} size-[34px] border shadow-[0_10px_22px_rgba(0,0,0,0.07)]`}
-          >
-            <AvatarFallback className="bg-transparent text-[11px] font-medium text-inherit">
-              {currentUserInitials}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      </header>
+      <AppShellHeader
+        isSetupComplete={isSetupComplete}
+        stageOrder={stageOrder}
+        stageLabel={stageLabel}
+        currentStageIndex={currentStageIndex}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+        currentUserTone={currentUserTone}
+        currentUserInitials={currentUserInitials}
+      />
 
       {!isSetupComplete ? (
-        inviteSlugFromUrl ? (
-          <section className="my-[14px] mb-[26px]">
-            <div className="mx-auto max-w-[540px] overflow-hidden rounded-[20px] border border-retro-border-soft bg-retro-surface p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)]">
-              <p className="text-xs tracking-[0.2em] text-retro-muted uppercase">
-                Join Session
-              </p>
-              <h1 className="mt-2 text-[34px] leading-[1.1] font-medium text-retro-heading">
-                Enter Your Name
-              </h1>
-              <p className="mt-2 text-sm text-retro-muted">
-                You are joining session{" "}
-                <span className="font-medium text-retro-strong">
-                  {inviteSlugFromUrl}
-                </span>
-                .
-              </p>
-              <div className="mt-6">
-                <Input
-                  className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
-                  placeholder="Your name"
-                  value={joinParticipantName}
-                  onChange={(event) => {
-                    setJoinError(null);
-                    setJoinParticipantName(event.target.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      joinExistingSession();
-                    }
-                  }}
-                />
-              </div>
-              <div className="mt-6">
-                <Button
-                  type="button"
-                  onClick={joinExistingSession}
-                  disabled={!canJoinSession}
-                >
-                  Join Session
-                </Button>
-              </div>
-              {joinError ? (
-                <p className="mt-3 text-sm text-retro-danger">{joinError}</p>
-              ) : null}
-            </div>
-          </section>
-        ) : (
-          <section className="my-[14px] mb-[26px]">
-            <div className="relative overflow-hidden rounded-[20px] border border-retro-border-soft bg-retro-surface p-7 shadow-[0_24px_46px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_10%_15%,rgba(255,255,255,0.32),rgba(255,255,255,0)_46%),radial-gradient(circle_at_90%_90%,rgba(255,255,255,0.24),rgba(255,255,255,0)_45%)] before:content-[''] dark:before:bg-none">
-              <div className="relative z-10 grid grid-cols-[1.45fr_1fr] gap-6 max-[840px]:grid-cols-1">
-                <section>
-                  <p className="text-xs tracking-[0.2em] text-retro-muted uppercase">
-                    Welcome
-                  </p>
-                  <h1 className="mt-2 text-[38px] leading-[1.05] font-medium text-retro-heading">
-                    Create a New Retro Room
-                  </h1>
-                  <p className="mt-3 max-w-[45ch] text-sm text-retro-muted">
-                    Give your session a team identity and assign the facilitator
-                    before the board unlocks.
-                  </p>
-
-                  <div className="mt-6 grid gap-3">
-                    <div>
-                      <Label
-                        htmlFor="team-name"
-                        className="mb-1 block text-sm text-retro-strong"
-                      >
-                        Team Name
-                      </Label>
-                      <Input
-                        id="team-name"
-                        className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
-                        placeholder="e.g. Product Engineering"
-                        value={teamName}
-                        onChange={(event) => setTeamName(event.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="admin-name"
-                        className="mb-1 block text-sm text-retro-strong"
-                      >
-                        Facilitator Name
-                      </Label>
-                      <Input
-                        id="admin-name"
-                        className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
-                        placeholder="e.g. Alex Johnson"
-                        value={adminName}
-                        onChange={(event) => setAdminName(event.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <Button
-                      type="button"
-                      onClick={async () => {
-                        if (!canEnterRetro) return;
-                        try {
-                          setApiError(null);
-                          const payload = await createSession({
-                            title: teamName.trim(),
-                            adminName: adminName.trim(),
-                          });
-                          const slug = payload.session.slug;
-                          setStoredActiveSlug(slug);
-                          setStoredToken(slug, payload.token);
-                          setSessionSlug(slug);
-                          setParticipantToken(payload.token);
-                          setIsSetupComplete(true);
-                          await loadSessionState(slug, payload.token);
-                        } catch (error) {
-                          setApiError(
-                            error instanceof Error
-                              ? error.message
-                              : "Unable to create session",
-                          );
-                        }
-                      }}
-                      disabled={!canEnterRetro}
-                    >
-                      Launch Retrospective
-                    </Button>
-                  </div>
-                  {apiError ? (
-                    <p className="mt-3 text-sm text-retro-danger">{apiError}</p>
-                  ) : null}
-                </section>
-
-                <section className="rounded-[16px] border border-retro-border-soft bg-retro-surface-soft p-5">
-                  <h3 className="m-0 text-base font-medium text-retro-strong">
-                    Join Instead
-                  </h3>
-                  <p className="mt-2 text-xs text-retro-muted">
-                    Got a shared session code? Join an existing retrospective
-                    room.
-                  </p>
-                  <div className="mt-4 grid gap-2.5 rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
-                    <Input
-                      className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
-                      placeholder="Session code or invite URL"
-                      value={joinSessionCode}
-                      onChange={(event) => {
-                        setJoinError(null);
-                        setJoinSessionCode(event.target.value);
-                      }}
-                    />
-                    <Input
-                      className="block h-[40px] w-full rounded-[10px] border border-retro-border-soft bg-retro-card-hover px-3 text-sm text-retro-strong placeholder:text-retro-subtle"
-                      placeholder="Your name"
-                      value={joinParticipantName}
-                      onChange={(event) => {
-                        setJoinError(null);
-                        setJoinParticipantName(event.target.value);
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!canJoinSession}
-                      onClick={joinExistingSession}
-                    >
-                      Join Session
-                    </Button>
-                  </div>
-                  <div className="mt-4 rounded-[12px] border border-retro-border-soft bg-retro-surface-soft px-3 py-2 text-xs text-retro-muted">
-                    Ask the admin to share the invite code from their session.
-                  </div>
-                  {joinError ? (
-                    <p className="mt-3 text-sm text-retro-danger">{joinError}</p>
-                  ) : null}
-                </section>
-              </div>
-            </div>
-          </section>
-        )
+        <SetupScreen
+          inviteSlugFromUrl={inviteSlugFromUrl}
+          teamName={teamName}
+          adminName={adminName}
+          sprintLabel={sprintLabel}
+          joinSessionCode={joinSessionCode}
+          joinParticipantName={joinParticipantName}
+          canEnterRetro={canEnterRetro}
+          canJoinSession={canJoinSession}
+          apiError={apiError}
+          joinError={joinError}
+          onTeamNameChange={setTeamName}
+          onAdminNameChange={setAdminName}
+          onSprintLabelChange={setSprintLabel}
+          onJoinSessionCodeChange={setJoinSessionCode}
+          onJoinParticipantNameChange={setJoinParticipantName}
+          onCreateSession={launchSession}
+          onJoinSession={joinExistingSession}
+          onClearJoinError={() => setJoinError(null)}
+        />
       ) : (
-        <>
-          <section className="my-[14px] mb-[26px]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h1 className="m-0 text-[34px] leading-[1.15] font-medium text-retro-heading">
-                  {teamName.trim()} Retrospective
-                </h1>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-retro-muted">
-                  <span className="rounded-[10px] border border-retro-border bg-retro-surface-soft px-2.5 py-1">
-                    {sessionId}
-                  </span>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 rounded-[10px] border border-retro-border bg-retro-surface-soft px-2.5 py-1 text-retro-body"
-                    onClick={copyInviteLink}
-                  >
-                    <Share2 className="size-3.5" />
-                    {inviteCopied ? "Copied" : "Copy invite link"}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {!discussionMode ? (
-                  <Button
-                    type="button"
-                    onClick={startDiscussion}
-                    disabled={!hasDiscussionItems || !isAdmin}
-                  >
-                    {everyoneDoneVoting ? "Start Discussion" : "Start Discussion Anyway"}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!isAdmin}
-                    onClick={() => {
-                      if (!isAdmin) return;
-                      runMutation(() =>
-                        setNavigation(sessionSlug, participantToken, {
-                          activeSection: "retro",
-                        }),
-                      ).catch((error: unknown) => {
-                        setApiError(
-                          error instanceof Error
-                            ? error.message
-                            : "Unable to return to board",
-                        );
-                      });
-                    }}
-                  >
-                    Back To Board
-                  </Button>
-                )}
-                {isAdmin ? (
-                  <Button type="button" variant="outline" onClick={endSession}>
-                    End Session
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-            {apiError ? (
-              <p className="mt-2 text-sm text-retro-danger">{apiError}</p>
-            ) : null}
-          </section>
-
-          <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
-            {discussionMode ? (
-              <section className="relative col-span-2 min-h-[220px] overflow-hidden rounded-[18px] border border-retro-border-soft bg-retro-surface p-6 shadow-[0_22px_44px_rgba(0,0,0,0.06)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/40 before:to-white/0 before:content-[''] dark:before:bg-none max-[840px]:col-span-1 max-[840px]:min-h-[200px]">
-                <div className="relative z-10 flex min-h-[320px] flex-col">
-                  <div className="flex-1">
-                    {happinessMode ? (
-                    <div className="max-w-xl">
-                      <p className="text-sm text-retro-muted">
-                        Session complete
-                      </p>
-                      <h2 className="mt-2 text-[26px] leading-[1.2] font-medium text-retro-heading">
-                        Happiness Check
-                      </h2>
-                      <p className="mt-2 text-sm text-retro-muted">
-                        How do you feel about this retrospective session?
-                      </p>
-                      <div className="mt-5">
-                        <div className="mb-2 flex items-center gap-2 text-sm text-retro-strong">
-                          <span className="text-xl leading-none" aria-hidden>
-                            {happinessMood.emoji}
-                          </span>
-                          <span>{happinessMood.label}</span>
-                        </div>
-                        <Slider
-                          min={1}
-                          max={10}
-                          step={1}
-                          value={[happinessScore]}
-                          onValueChange={(values) => setHappinessScore(values[0] ?? 7)}
-                          className="w-full"
-                        />
-                        <div className="mt-1 flex justify-between text-xs text-retro-muted">
-                          <span>1</span>
-                          <span>2</span>
-                          <span>3</span>
-                          <span>4</span>
-                          <span>5</span>
-                          <span>6</span>
-                          <span>7</span>
-                          <span>8</span>
-                          <span>9</span>
-                          <span>10</span>
-                        </div>
-                      </div>
-                      {happinessSubmitted ? (
-                        <p className="mt-5 text-sm text-retro-strong">
-                          Thanks. Happiness score recorded.
-                        </p>
-                      ) : null}
-                      {allHappinessSubmitted ? (
-                        <div className="mt-5 rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
-                          <p className="text-xs tracking-[0.18em] text-retro-muted uppercase">
-                            Team Result
-                          </p>
-                          <p className="mt-2 text-2xl font-semibold text-retro-heading">
-                            {overallHappinessAverage?.toFixed(1) ?? "0.0"} / 10
-                          </p>
-                          <p className="mt-1 text-sm text-retro-muted">
-                            {submittedHappinessCount} of {totalParticipants} participants submitted.
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="mt-4 text-xs text-retro-muted">
-                          Waiting for {Math.max(0, totalParticipants - submittedHappinessCount)} more participant
-                          {Math.max(0, totalParticipants - submittedHappinessCount) === 1 ? "" : "s"} to submit.
-                        </p>
-                      )}
-                    </div>
-                    ) : currentDiscussion ? (
-                      <>
-                        <p className="text-sm text-retro-muted">
-                          {currentDiscussion.side === "right"
-                            ? "What went right"
-                            : "What went wrong"}{" "}
-                          · {currentDiscussion.votes} votes
-                        </p>
-                        <div className="mt-2 flex items-start gap-3">
-                          {currentDiscussion.kind === "item" && currentDiscussionEntryId
-                            ? entryBadge(currentDiscussionEntryId, "md")
-                            : null}
-                          <h2 className="break-words text-[26px] leading-[1.2] font-medium text-retro-heading">
-                            {currentDiscussion.title}
-                          </h2>
-                        </div>
-                        {currentDiscussion.kind === "group" ? (
-                          <ul className="mt-4 flex list-none flex-col gap-2 p-0">
-                            {(currentDiscussionEntry?.kind === "group"
-                              ? currentDiscussionEntry.items
-                              : []
-                            ).map((item) => (
-                              <li
-                                key={item.id}
-                                className="flex items-start gap-2 rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2 text-sm text-retro-strong"
-                              >
-                                {entryBadge(item.id)}
-                                <span className="break-words">{item.text}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="text-sm text-retro-muted">
-                        No topics available yet.
-                      </p>
-                    )}
-                  </div>
-
-                  {happinessMode && !happinessSubmitted ? (
-                    <div className="mt-6 flex justify-end">
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          runMutation(() =>
-                            upsertHappiness(
-                              sessionSlug,
-                              participantToken,
-                              happinessScore,
-                            ),
-                          )
-                            .then(() => setHappinessSubmitted(true))
-                            .catch((error: unknown) => {
-                              setApiError(
-                                error instanceof Error
-                                  ? error.message
-                                  : "Unable to submit happiness",
-                              );
-                            });
-                        }}
-                      >
-                        Submit Check
-                      </Button>
-                    </div>
-                  ) : null}
-
-                  {!happinessMode && currentDiscussion ? (
-                    <div className="mt-6 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-stretch">
-                      <span className="text-sm text-retro-muted">
-                        {discussionIndex + 1}/{discussionQueue.length}
-                      </span>
-                      <div className="flex items-center gap-2 self-end max-[640px]:self-stretch max-[640px]:justify-end">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={previousDiscussion}
-                          disabled={discussionIndex === 0 || !isAdmin}
-                        >
-                          Previous
-                        </Button>
-                        {discussionIndex >= discussionQueue.length - 1 ? (
-                          <Button
-                            type="button"
-                            onClick={finishDiscussion}
-                            disabled={!isAdmin}
-                          >
-                            Finish
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            onClick={nextDiscussion}
-                            disabled={!isAdmin}
-                          >
-                            Next Topic
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </section>
-            ) : (
-              <>
-                <RetroColumn
-                  side="right"
-                  title="What went right"
-                  inputValue={wentRightInput}
-                  onInputChange={setWentRightInput}
-                  onAdd={addWentRight}
-                  items={sortedRight}
-                  onDropPanel={handleDropOnPanel}
-                  onDropItem={handleDropOnItem}
-                  onDragStartEntry={(side, id, dataTransfer) => {
-                    dataTransfer.setData("text/plain", id);
-                    dataTransfer.effectAllowed = "move";
-                    setDragging({ sourceSide: side, kind: "entry-item", id });
-                  }}
-                  onDragStartGrouped={(side, groupId, itemId, dataTransfer) => {
-                    dataTransfer.setData("text/plain", itemId);
-                    dataTransfer.effectAllowed = "move";
-                    setDragging({
-                      sourceSide: side,
-                      kind: "grouped-item",
-                      groupId,
-                      itemId,
-                    });
-                  }}
-                  onDragEnd={() => setDragging(null)}
-                  onToggleVote={toggleVote}
-                  onRemove={removeItem}
-                  onEdit={openEditEntry}
-                  canRemove={(id) =>
-                    isAdmin || entryAuthorMap.get(id) === viewerId
-                  }
-                  canEdit={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
-                  onUndoGroupedItem={undoGroupedItem}
-                  renderEntryBadge={entryBadge}
-                />
-
-                <RetroColumn
-                  side="wrong"
-                  title="What went wrong"
-                  inputValue={wentWrongInput}
-                  onInputChange={setWentWrongInput}
-                  onAdd={addWentWrong}
-                  items={sortedWrong}
-                  onDropPanel={handleDropOnPanel}
-                  onDropItem={handleDropOnItem}
-                  onDragStartEntry={(side, id, dataTransfer) => {
-                    dataTransfer.setData("text/plain", id);
-                    dataTransfer.effectAllowed = "move";
-                    setDragging({ sourceSide: side, kind: "entry-item", id });
-                  }}
-                  onDragStartGrouped={(side, groupId, itemId, dataTransfer) => {
-                    dataTransfer.setData("text/plain", itemId);
-                    dataTransfer.effectAllowed = "move";
-                    setDragging({
-                      sourceSide: side,
-                      kind: "grouped-item",
-                      groupId,
-                      itemId,
-                    });
-                  }}
-                  onDragEnd={() => setDragging(null)}
-                  onToggleVote={toggleVote}
-                  onRemove={removeItem}
-                  onEdit={openEditEntry}
-                  canRemove={(id) =>
-                    isAdmin || entryAuthorMap.get(id) === viewerId
-                  }
-                  canEdit={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
-                  onUndoGroupedItem={undoGroupedItem}
-                  renderEntryBadge={entryBadge}
-                />
-              </>
-            )}
-
-            <aside className="flex flex-col gap-4">
-              <section className="relative overflow-hidden rounded-2xl border border-retro-border-soft bg-retro-surface p-[18px] shadow-[0_18px_38px_rgba(0,0,0,0.05)] before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/40 before:to-white/0 before:content-[''] dark:before:bg-none">
-                <div className="relative z-10">
-                  <h3 className="m-0 text-base font-medium text-retro-strong">
-                    Joinees List
-                  </h3>
-                  <div className="mt-2 rounded-[12px] border border-retro-border-soft bg-retro-card px-3 py-2">
-                    <p className="text-xs text-retro-muted">
-                      Voting progress: {joineesDoneVoting}/{totalJoinees} done
-                    </p>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-retro-surface-soft">
-                      <div
-                        className="h-full rounded-full bg-[var(--retro-action)] transition-all"
-                        style={{
-                          width: totalJoinees > 0 ? `${(joineesDoneVoting / totalJoinees) * 100}%` : "0%"
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <ul
-                    aria-label="Joinees list"
-                    className="mt-3 flex list-none flex-col gap-2.5 p-0"
-                  >
-                    {(sessionState?.participants ?? []).map((person) => (
-                      <li
-                        key={person.id}
-                        className="flex items-center justify-between gap-3 rounded-[14px] border border-retro-border-soft bg-retro-card px-3 py-3"
-                      >
-                        <span className="inline-flex items-center gap-2.5 text-sm text-retro-body">
-                          <Avatar
-                            aria-hidden
-                            className={`identity-badge identity-tone-${colorToneIndexFromSeed(person.id)} size-[24px] border`}
-                          >
-                            <AvatarFallback className="bg-transparent text-[10px] font-semibold text-inherit">
-                              {initialsFromName(person.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          {person.name}
-                        </span>
-                        {person.isAdmin ? (
-                          <span className="text-xs text-retro-muted">admin</span>
-                        ) : (
-                          <span className="text-xs text-retro-muted">
-                            {person.votesRemaining} left
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </section>
-            </aside>
-          </section>
-        </>
+        <SessionScreen
+          teamName={teamName}
+          sessionId={sessionId}
+          sprintDisplayLabel={sprintDisplayLabel}
+          nextSprintDisplayLabel={nextSprintDisplayLabel}
+          showSprintLabel={Boolean(activeSprintLabel)}
+          inviteCopied={inviteCopied}
+          apiError={apiError}
+          discussionMode={discussionMode}
+          summaryMode={summaryMode}
+          actionsMode={actionsMode}
+          happinessMode={happinessMode}
+          isAdmin={isAdmin}
+          hasDiscussionItems={hasDiscussionItems}
+          everyoneDoneVoting={everyoneDoneVoting}
+          actionItems={actionItems}
+          actionItemInput={actionItemInput}
+          totalParticipants={totalParticipants}
+          submittedHappinessCount={submittedHappinessCount}
+          overallHappinessAverage={overallHappinessAverage}
+          happinessSubmitted={happinessSubmitted}
+          happinessScore={happinessScore}
+          happinessMood={happinessMood}
+          allHappinessSubmitted={allHappinessSubmitted}
+          currentDiscussion={currentDiscussion}
+          currentDiscussionEntryId={currentDiscussionEntryId}
+          currentDiscussionEntry={currentDiscussionEntry}
+          discussionIndex={discussionIndex}
+          discussionQueueLength={discussionQueue.length}
+          sortedRight={sortedRight}
+          sortedWrong={sortedWrong}
+          participants={sessionState?.participants ?? []}
+          joineesDoneVoting={joineesDoneVoting}
+          entryBadge={entryBadge}
+          onCopyInviteLink={copyInviteLink}
+          onStartDiscussion={startDiscussion}
+          onBackToBoard={returnToBoard}
+          onEndSession={endSession}
+          onActionItemInputChange={setActionItemInput}
+          onAddActionItem={addActionItem}
+          onRemoveActionItem={removeActionItem}
+          onProceedToHappiness={proceedToHappiness}
+          onHappinessScoreChange={setHappinessScore}
+          onSubmitHappiness={submitHappinessCheck}
+          onPreviousDiscussion={previousDiscussion}
+          onNextDiscussion={nextDiscussion}
+          onFinishDiscussion={finishDiscussion}
+          onDropPanel={handleDropOnPanel}
+          onDropItem={handleDropOnItem}
+          onDragStartEntry={(side, id, dataTransfer) => {
+            dataTransfer.setData("text/plain", id);
+            dataTransfer.effectAllowed = "move";
+            setDragging({ sourceSide: side, kind: "entry-item", id });
+          }}
+          onDragStartGrouped={(side, groupId, itemId, dataTransfer) => {
+            dataTransfer.setData("text/plain", itemId);
+            dataTransfer.effectAllowed = "move";
+            setDragging({
+              sourceSide: side,
+              kind: "grouped-item",
+              groupId,
+              itemId,
+            });
+          }}
+          onDragEnd={() => setDragging(null)}
+          onToggleVote={toggleVote}
+          onRemoveItem={removeItem}
+          onEditItem={openEditEntry}
+          canRemove={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
+          canEdit={(id) => isAdmin || entryAuthorMap.get(id) === viewerId}
+          onUndoGroupedItem={undoGroupedItem}
+          wentRightInput={wentRightInput}
+          wentWrongInput={wentWrongInput}
+          onWentRightInputChange={setWentRightInput}
+          onWentWrongInputChange={setWentWrongInput}
+          onAddWentRight={addWentRight}
+          onAddWentWrong={addWentWrong}
+        />
       )}
     </main>
   );

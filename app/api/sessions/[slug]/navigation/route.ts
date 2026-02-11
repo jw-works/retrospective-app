@@ -4,7 +4,7 @@ import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
 import type { Section } from "@/lib/backend/types";
 
 // Admin-only endpoint controlling the shared stage for all participants.
-const sections: Section[] = ["retro", "discussion", "happiness", "done"];
+const sections: Section[] = ["retro", "discussion", "actions", "happiness", "done"];
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {

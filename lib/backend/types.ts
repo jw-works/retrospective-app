@@ -4,7 +4,7 @@
 // - UI state transformations.
 export type SessionPhase = "collecting" | "discussing" | "finished";
 
-export type Section = "retro" | "discussion" | "happiness" | "done";
+export type Section = "retro" | "discussion" | "actions" | "happiness" | "done";
 
 export type EntryType = "went_right" | "went_wrong";
 
@@ -20,6 +20,7 @@ export type Session = {
   id: string;
   slug: string;
   title: string;
+  sprintLabel?: string | null;
   createdByParticipantId: string;
   phase: SessionPhase;
   createdAt: string;
@@ -69,6 +70,14 @@ export type NavigationState = {
   updatedAt: string;
 };
 
+export type ActionItem = {
+  id: string;
+  sessionId: string;
+  createdByParticipantId: string;
+  content: string;
+  createdAt: string;
+};
+
 export type AuthToken = {
   token: string;
   participantId: string;
@@ -81,6 +90,7 @@ export type StoreData = {
   participants: Participant[];
   entries: Entry[];
   groups: EntryGroup[];
+  actionItems: ActionItem[];
   votes: Vote[];
   happinessChecks: HappinessCheck[];
   navigation: NavigationState[];
@@ -101,14 +111,16 @@ export type SessionViewer = {
 };
 
 export type SessionStateResponse = {
-  session: Pick<Session, "id" | "slug" | "title" | "phase" | "createdAt" | "updatedAt">;
+  session: Pick<Session, "id" | "slug" | "title" | "sprintLabel" | "phase" | "createdAt" | "updatedAt">;
   participants: PublicParticipant[];
   entries: (Entry & { votes: number; votedByViewer: boolean })[];
   groups: EntryGroup[];
+  actionItems: ActionItem[];
   navigation: NavigationState;
   viewer: SessionViewer | null;
   happiness: {
     average: number | null;
     count: number;
+    viewerSubmitted: boolean;
   };
 };
