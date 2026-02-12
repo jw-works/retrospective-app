@@ -9,6 +9,16 @@
       "phase": "discussing",
       "createdAt": "2026-02-11T17:37:39.360Z",
       "updatedAt": "2026-02-11T17:49:58.999Z"
+    },
+    {
+      "id": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "slug": "justforfix-r1gf9m",
+      "title": "JustForFix",
+      "sprintLabel": "77",
+      "createdByParticipantId": "465d9302-4d58-472a-8c9e-5e974fbe4017",
+      "phase": "finished",
+      "createdAt": "2026-02-12T11:40:07.883Z",
+      "updatedAt": "2026-02-12T11:41:16.306Z"
     }
   ],
   "participants": [
@@ -46,6 +56,13 @@
       "name": "John Wilson",
       "isAdmin": false,
       "createdAt": "2026-02-11T17:39:24.256Z"
+    },
+    {
+      "id": "465d9302-4d58-472a-8c9e-5e974fbe4017",
+      "sessionId": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "name": "Chris Cole",
+      "isAdmin": true,
+      "createdAt": "2026-02-12T11:40:07.883Z"
     }
   ],
   "entries": [
@@ -111,6 +128,24 @@
       "content": "Seems like I need to iron out from bugs",
       "groupId": null,
       "createdAt": "2026-02-11T17:39:40.419Z"
+    },
+    {
+      "id": "b0e664b3-c8f3-4533-91a5-c3f620085d8b",
+      "sessionId": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "authorParticipantId": "465d9302-4d58-472a-8c9e-5e974fbe4017",
+      "type": "went_right",
+      "content": "Testing this now",
+      "groupId": null,
+      "createdAt": "2026-02-12T11:40:12.165Z"
+    },
+    {
+      "id": "e74ad3ae-2f87-4fa7-bc10-5419da33c50d",
+      "sessionId": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "authorParticipantId": "465d9302-4d58-472a-8c9e-5e974fbe4017",
+      "type": "went_wrong",
+      "content": "components?",
+      "groupId": null,
+      "createdAt": "2026-02-12T11:40:16.426Z"
     }
   ],
   "groups": [
@@ -129,6 +164,20 @@
       "createdByParticipantId": "80d13e1b-b7f8-446f-8012-c846b55d2ab2",
       "content": "Finish all sprint goals",
       "createdAt": "2026-02-11T17:46:21.944Z"
+    },
+    {
+      "id": "ade20a52-61f1-4a8a-bc0e-0966e59e3320",
+      "sessionId": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "createdByParticipantId": "465d9302-4d58-472a-8c9e-5e974fbe4017",
+      "content": "Hello there",
+      "createdAt": "2026-02-12T11:40:33.264Z"
+    },
+    {
+      "id": "27c3ae12-9655-4bec-965c-031fc977c8a6",
+      "sessionId": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "createdByParticipantId": "465d9302-4d58-472a-8c9e-5e974fbe4017",
+      "content": "Whats up my fam",
+      "createdAt": "2026-02-12T11:40:36.206Z"
     }
   ],
   "votes": [
@@ -253,6 +302,14 @@
       "score": 7,
       "createdAt": "2026-02-11T17:47:07.142Z",
       "updatedAt": "2026-02-11T17:47:07.142Z"
+    },
+    {
+      "id": "7c83d644-ede5-4cae-a4a7-4ae094abe143",
+      "sessionId": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "participantId": "465d9302-4d58-472a-8c9e-5e974fbe4017",
+      "score": 7,
+      "createdAt": "2026-02-12T11:40:44.377Z",
+      "updatedAt": "2026-02-12T11:40:44.377Z"
     }
   ],
   "navigation": [
@@ -261,6 +318,12 @@
       "activeSection": "happiness",
       "discussionEntryId": null,
       "updatedAt": "2026-02-11T17:49:58.999Z"
+    },
+    {
+      "sessionId": "5325164b-3a05-4a02-84c4-117d2ed93ad0",
+      "activeSection": "done",
+      "discussionEntryId": null,
+      "updatedAt": "2026-02-12T11:41:16.306Z"
     }
   ],
   "authTokens": []
