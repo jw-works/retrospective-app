@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import type { DiscussionTopic, RetroEntry, Side } from "@/lib/discussion";
 import { BoardStage } from "@/components/retro/session/board-stage";
 import { DiscussionStage } from "@/components/retro/session/discussion-stage";
 import { JoineesPanel } from "@/components/retro/session/joinees-panel";
 import { SessionTopBar } from "@/components/retro/session/session-topbar";
 import { SummaryStage } from "@/components/retro/session/summary-stage";
+import type { DiscussionTopic, RetroEntry, Side } from "@/lib/discussion";
 
 type ParticipantSummary = {
   id: string;
@@ -84,105 +84,171 @@ type SessionScreenProps = {
   onAddWentWrong: () => void;
 };
 
-export function SessionScreen(props: SessionScreenProps) {
+export function SessionScreen({
+  teamName,
+  sessionId,
+  sprintDisplayLabel,
+  nextSprintDisplayLabel,
+  showSprintLabel,
+  inviteCopied,
+  apiError,
+  discussionMode,
+  summaryMode,
+  actionsMode,
+  happinessMode,
+  isAdmin,
+  hasDiscussionItems,
+  everyoneDoneVoting,
+  actionItems,
+  actionItemInput,
+  totalParticipants,
+  submittedHappinessCount,
+  overallHappinessAverage,
+  happinessSubmitted,
+  happinessScore,
+  happinessMood,
+  allHappinessSubmitted,
+  currentDiscussion,
+  currentDiscussionEntryId,
+  currentDiscussionEntry,
+  discussionIndex,
+  discussionQueueLength,
+  sortedRight,
+  sortedWrong,
+  participants,
+  joineesDoneVoting,
+  entryBadge,
+  onCopyInviteLink,
+  onStartDiscussion,
+  onBackToBoard,
+  onEndSession,
+  onActionItemInputChange,
+  onAddActionItem,
+  onRemoveActionItem,
+  onProceedToHappiness,
+  onHappinessScoreChange,
+  onSubmitHappiness,
+  onPreviousDiscussion,
+  onNextDiscussion,
+  onFinishDiscussion,
+  onDropPanel,
+  onDropItem,
+  onDragStartEntry,
+  onDragStartGrouped,
+  onDragEnd,
+  onToggleVote,
+  onRemoveItem,
+  onEditItem,
+  canRemove,
+  canEdit,
+  onUndoGroupedItem,
+  wentRightInput,
+  wentWrongInput,
+  onWentRightInputChange,
+  onWentWrongInputChange,
+  onAddWentRight,
+  onAddWentWrong,
+}: SessionScreenProps) {
+  const mainStage = summaryMode ? (
+    <SummaryStage
+      teamName={teamName}
+      sessionId={sessionId}
+      sprintDisplayLabel={sprintDisplayLabel}
+      nextSprintDisplayLabel={nextSprintDisplayLabel}
+      showSprintLabel={showSprintLabel}
+      actionItems={actionItems}
+      overallHappinessAverage={overallHappinessAverage}
+      totalParticipants={totalParticipants}
+      submittedHappinessCount={submittedHappinessCount}
+      sortedRight={sortedRight}
+      sortedWrong={sortedWrong}
+      entryBadge={entryBadge}
+    />
+  ) : discussionMode ? (
+    <DiscussionStage
+      actionsMode={actionsMode}
+      happinessMode={happinessMode}
+      isAdmin={isAdmin}
+      showSprintLabel={showSprintLabel}
+      sprintDisplayLabel={sprintDisplayLabel}
+      nextSprintDisplayLabel={nextSprintDisplayLabel}
+      actionItems={actionItems}
+      actionItemInput={actionItemInput}
+      onActionItemInputChange={onActionItemInputChange}
+      onAddActionItem={onAddActionItem}
+      onRemoveActionItem={onRemoveActionItem}
+      happinessMood={happinessMood}
+      happinessScore={happinessScore}
+      onHappinessScoreChange={onHappinessScoreChange}
+      happinessSubmitted={happinessSubmitted}
+      allHappinessSubmitted={allHappinessSubmitted}
+      overallHappinessAverage={overallHappinessAverage}
+      submittedHappinessCount={submittedHappinessCount}
+      totalParticipants={totalParticipants}
+      currentDiscussion={currentDiscussion}
+      currentDiscussionEntryId={currentDiscussionEntryId}
+      currentDiscussionEntry={currentDiscussionEntry}
+      entryBadge={entryBadge}
+      onSubmitHappiness={onSubmitHappiness}
+      onProceedToHappiness={onProceedToHappiness}
+      discussionIndex={discussionIndex}
+      discussionQueueLength={discussionQueueLength}
+      onPreviousDiscussion={onPreviousDiscussion}
+      onNextDiscussion={onNextDiscussion}
+      onFinishDiscussion={onFinishDiscussion}
+    />
+  ) : (
+    <BoardStage
+      sortedRight={sortedRight}
+      sortedWrong={sortedWrong}
+      wentRightInput={wentRightInput}
+      wentWrongInput={wentWrongInput}
+      onWentRightInputChange={onWentRightInputChange}
+      onWentWrongInputChange={onWentWrongInputChange}
+      onAddWentRight={onAddWentRight}
+      onAddWentWrong={onAddWentWrong}
+      onDropPanel={onDropPanel}
+      onDropItem={onDropItem}
+      onDragStartEntry={onDragStartEntry}
+      onDragStartGrouped={onDragStartGrouped}
+      onDragEnd={onDragEnd}
+      onToggleVote={onToggleVote}
+      onRemoveItem={onRemoveItem}
+      onEditItem={onEditItem}
+      canRemove={canRemove}
+      canEdit={canEdit}
+      onUndoGroupedItem={onUndoGroupedItem}
+      entryBadge={entryBadge}
+    />
+  );
+
   return (
     <>
       <SessionTopBar
-        teamName={props.teamName}
-        sessionId={props.sessionId}
-        sprintDisplayLabel={props.sprintDisplayLabel}
-        showSprintLabel={props.showSprintLabel}
-        inviteCopied={props.inviteCopied}
-        apiError={props.apiError}
-        discussionMode={props.discussionMode}
-        isAdmin={props.isAdmin}
-        hasDiscussionItems={props.hasDiscussionItems}
-        everyoneDoneVoting={props.everyoneDoneVoting}
-        onCopyInviteLink={props.onCopyInviteLink}
-        onStartDiscussion={props.onStartDiscussion}
-        onBackToBoard={props.onBackToBoard}
-        onEndSession={props.onEndSession}
+        teamName={teamName}
+        sessionId={sessionId}
+        sprintDisplayLabel={sprintDisplayLabel}
+        showSprintLabel={showSprintLabel}
+        inviteCopied={inviteCopied}
+        apiError={apiError}
+        discussionMode={discussionMode}
+        isAdmin={isAdmin}
+        hasDiscussionItems={hasDiscussionItems}
+        everyoneDoneVoting={everyoneDoneVoting}
+        onCopyInviteLink={onCopyInviteLink}
+        onStartDiscussion={onStartDiscussion}
+        onBackToBoard={onBackToBoard}
+        onEndSession={onEndSession}
       />
 
       <section className="grid grid-cols-[1.2fr_1.2fr_0.9fr] items-stretch gap-[22px] max-[840px]:grid-cols-1">
-        {props.summaryMode ? (
-          <SummaryStage
-            teamName={props.teamName}
-            sessionId={props.sessionId}
-            sprintDisplayLabel={props.sprintDisplayLabel}
-            nextSprintDisplayLabel={props.nextSprintDisplayLabel}
-            showSprintLabel={props.showSprintLabel}
-            actionItems={props.actionItems}
-            overallHappinessAverage={props.overallHappinessAverage}
-            totalParticipants={props.totalParticipants}
-            submittedHappinessCount={props.submittedHappinessCount}
-            sortedRight={props.sortedRight}
-            sortedWrong={props.sortedWrong}
-            entryBadge={props.entryBadge}
-          />
-        ) : props.discussionMode ? (
-          <DiscussionStage
-            actionsMode={props.actionsMode}
-            happinessMode={props.happinessMode}
-            isAdmin={props.isAdmin}
-            showSprintLabel={props.showSprintLabel}
-            sprintDisplayLabel={props.sprintDisplayLabel}
-            nextSprintDisplayLabel={props.nextSprintDisplayLabel}
-            actionItems={props.actionItems}
-            actionItemInput={props.actionItemInput}
-            onActionItemInputChange={props.onActionItemInputChange}
-            onAddActionItem={props.onAddActionItem}
-            onRemoveActionItem={props.onRemoveActionItem}
-            happinessMood={props.happinessMood}
-            happinessScore={props.happinessScore}
-            onHappinessScoreChange={props.onHappinessScoreChange}
-            happinessSubmitted={props.happinessSubmitted}
-            allHappinessSubmitted={props.allHappinessSubmitted}
-            overallHappinessAverage={props.overallHappinessAverage}
-            submittedHappinessCount={props.submittedHappinessCount}
-            totalParticipants={props.totalParticipants}
-            currentDiscussion={props.currentDiscussion}
-            currentDiscussionEntryId={props.currentDiscussionEntryId}
-            currentDiscussionEntry={props.currentDiscussionEntry}
-            entryBadge={props.entryBadge}
-            onSubmitHappiness={props.onSubmitHappiness}
-            onProceedToHappiness={props.onProceedToHappiness}
-            discussionIndex={props.discussionIndex}
-            discussionQueueLength={props.discussionQueueLength}
-            onPreviousDiscussion={props.onPreviousDiscussion}
-            onNextDiscussion={props.onNextDiscussion}
-            onFinishDiscussion={props.onFinishDiscussion}
-          />
-        ) : (
-          <BoardStage
-            sortedRight={props.sortedRight}
-            sortedWrong={props.sortedWrong}
-            wentRightInput={props.wentRightInput}
-            wentWrongInput={props.wentWrongInput}
-            onWentRightInputChange={props.onWentRightInputChange}
-            onWentWrongInputChange={props.onWentWrongInputChange}
-            onAddWentRight={props.onAddWentRight}
-            onAddWentWrong={props.onAddWentWrong}
-            onDropPanel={props.onDropPanel}
-            onDropItem={props.onDropItem}
-            onDragStartEntry={props.onDragStartEntry}
-            onDragStartGrouped={props.onDragStartGrouped}
-            onDragEnd={props.onDragEnd}
-            onToggleVote={props.onToggleVote}
-            onRemoveItem={props.onRemoveItem}
-            onEditItem={props.onEditItem}
-            canRemove={props.canRemove}
-            canEdit={props.canEdit}
-            onUndoGroupedItem={props.onUndoGroupedItem}
-            entryBadge={props.entryBadge}
-          />
-        )}
+        {mainStage}
 
-        {!props.summaryMode ? (
+        {!summaryMode ? (
           <JoineesPanel
-            participants={props.participants}
-            joineesDoneVoting={props.joineesDoneVoting}
-            totalParticipants={props.totalParticipants}
+            participants={participants}
+            joineesDoneVoting={joineesDoneVoting}
+            totalParticipants={totalParticipants}
           />
         ) : null}
       </section>

@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import type { RetroEntry, Side } from "@/lib/discussion";
 
@@ -25,6 +27,42 @@ type RetroColumnProps = {
   renderEntryBadge: (entryId: string) => ReactNode;
 };
 
+type IconActionButtonProps = {
+  label: string;
+  title?: string;
+  className?: string;
+  disabled?: boolean;
+  onMouseDown?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+  children: ReactNode;
+};
+
+function IconActionButton({
+  label,
+  title,
+  className,
+  disabled,
+  onMouseDown,
+  onClick,
+  children,
+}: IconActionButtonProps) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      aria-label={label}
+      title={title}
+      className={cn("border-retro-border-soft bg-retro-card-hover p-0 text-retro-body", className)}
+      disabled={disabled}
+      onMouseDown={onMouseDown}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+}
+
 export function RetroColumn({
   side,
   title,
@@ -43,7 +81,7 @@ export function RetroColumn({
   canRemove,
   canEdit,
   onUndoGroupedItem,
-  renderEntryBadge
+  renderEntryBadge,
 }: RetroColumnProps) {
   return (
     <section
@@ -69,17 +107,16 @@ export function RetroColumn({
               }
             }}
           />
-          <button
-            type="button"
-            aria-label="Add"
-            onClick={onAdd}
-            className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-[10px] border border-retro-border-soft bg-retro-card-hover text-retro-body active:translate-y-px"
+          <IconActionButton
+            label="Add"
+            className="absolute right-2 bottom-2 size-8 rounded-[10px] active:translate-y-px"
+            onClick={() => onAdd()}
           >
             <svg viewBox="0 0 24 24" aria-hidden className="size-4 fill-none stroke-current stroke-[2.2]">
               <path d="M12 5v14" />
               <path d="M5 12h14" />
             </svg>
-          </button>
+          </IconActionButton>
         </div>
       </div>
       <ul className="mt-[14px] flex list-none flex-col gap-2.5 p-0" aria-label={`${title} list`}>
@@ -99,9 +136,10 @@ export function RetroColumn({
               event.stopPropagation();
               onDropItem(side, item.id);
             }}
-            className={`flex flex-wrap items-center gap-3 rounded-[14px] border border-retro-border-soft bg-retro-card px-3 py-3 text-sm text-retro-body ${
+            className={cn(
+              "flex flex-wrap items-center gap-3 rounded-[14px] border border-retro-border-soft bg-retro-card px-3 py-3 text-sm text-retro-body",
               item.kind === "item" ? "cursor-grab active:cursor-grabbing" : ""
-            }`}
+            )}
           >
             {item.kind === "item" ? (
               <span className="min-w-full flex-1 whitespace-normal pr-1.5 leading-[1.35]">{item.text}</span>
@@ -127,11 +165,10 @@ export function RetroColumn({
                         <div className="mt-1 flex w-full items-end justify-between gap-2">
                           <span>{renderEntryBadge(groupedItem.id)}</span>
                           <span className="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              aria-label="Edit comment"
+                            <IconActionButton
+                              label="Edit comment"
                               title="Edit comment"
-                              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-retro-border-soft bg-retro-card-hover text-retro-body"
+                              className="h-7 w-7 rounded-[8px]"
                               onMouseDown={(event) => event.stopPropagation()}
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -143,12 +180,11 @@ export function RetroColumn({
                                 <path d="m4 20 4-1 9.8-9.8a1.4 1.4 0 0 0 0-2L16.8 6a1.4 1.4 0 0 0-2 0L5 15.8 4 20Z" />
                                 <path d="m13.5 7.5 3 3" />
                               </svg>
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Undo from group"
+                            </IconActionButton>
+                            <IconActionButton
+                              label="Undo from group"
                               title="Undo from group"
-                              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-retro-border-soft bg-retro-card-hover text-retro-body"
+                              className="h-7 w-7 rounded-[8px]"
                               onMouseDown={(event) => event.stopPropagation()}
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -159,7 +195,7 @@ export function RetroColumn({
                                 <path d="M9 7 5 11l4 4" />
                                 <path d="M5 11h7a5 5 0 1 1 0 10h-3" />
                               </svg>
-                            </button>
+                            </IconActionButton>
                           </span>
                         </div>
                       </div>
@@ -172,36 +208,33 @@ export function RetroColumn({
               <span>{item.kind === "item" ? renderEntryBadge(item.id) : null}</span>
               <span className="inline-flex items-center gap-2">
                 <span className="min-w-5 text-right text-xs text-retro-muted">{item.votes}</span>
-                <button
-                  type="button"
-                  aria-label="Upvote"
-                  aria-pressed={item.voted}
-                  onClick={() => onToggleVote(side, item.id)}
-                  className={`h-[30px] w-[30px] rounded-[10px] border border-retro-border-soft bg-retro-card-hover text-center leading-7 text-retro-body transition ${
+                <IconActionButton
+                  label="Upvote"
+                  className={cn(
+                    "h-[30px] w-[30px] rounded-[10px] leading-7",
                     item.voted ? "border-retro-border bg-retro-card-strong text-retro-body" : ""
-                  }`}
+                  )}
+                  onClick={() => onToggleVote(side, item.id)}
                 >
                   ↑
-                </button>
+                </IconActionButton>
                 {item.kind === "item" && canEdit(item.id) ? (
-                  <button
-                    type="button"
-                    aria-label="Edit"
+                  <IconActionButton
+                    label="Edit"
+                    className="h-[30px] w-[30px] rounded-[10px] leading-7"
                     onClick={() => onEdit(side, item.id)}
-                    className="h-[30px] w-[30px] rounded-[10px] border border-retro-border-soft bg-retro-card-hover text-center leading-7 text-retro-body"
                   >
                     ✎
-                  </button>
+                  </IconActionButton>
                 ) : null}
                 {canRemove(item.id) ? (
-                  <button
-                    type="button"
-                    aria-label="Remove"
+                  <IconActionButton
+                    label="Remove"
+                    className="h-[30px] w-[30px] rounded-[10px] leading-7"
                     onClick={() => onRemove(side, item.id)}
-                    className="h-[30px] w-[30px] rounded-[10px] border border-retro-border-soft bg-retro-card-hover text-center leading-7 text-retro-body"
                   >
                     ×
-                  </button>
+                  </IconActionButton>
                 ) : null}
               </span>
             </div>

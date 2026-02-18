@@ -21,6 +21,51 @@ type SummaryStageProps = {
   entryBadge: (entryId: string, size?: "sm" | "md") => ReactNode;
 };
 
+type SummaryColumnProps = {
+  title: string;
+  items: RetroEntry[];
+  entryBadge: (entryId: string, size?: "sm" | "md") => ReactNode;
+};
+
+function SummaryColumn({ title, items, entryBadge }: SummaryColumnProps) {
+  return (
+    <section className="rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
+      <h3 className="text-base font-medium text-retro-strong">{title}</h3>
+      <ul className="mt-3 flex list-none flex-col gap-2 p-0">
+        {items.map((item) => (
+          <li
+            key={item.id}
+            className="rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 py-2 text-sm text-retro-strong"
+          >
+            {item.kind === "item" ? (
+              <>
+                <p className="break-words">{item.text}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  {entryBadge(item.id)}
+                  <span className="text-xs text-retro-muted">{item.votes} votes</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">{item.name}</p>
+                <ul className="mt-2 flex list-none flex-col gap-1 p-0">
+                  {item.items.map((groupedItem) => (
+                    <li key={groupedItem.id} className="flex items-start gap-2 text-xs text-retro-body">
+                      {entryBadge(groupedItem.id)}
+                      <span className="break-words">{groupedItem.text}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-right text-xs text-retro-muted">{item.votes} votes</p>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function SummaryStage({
   teamName,
   sessionId,
@@ -64,9 +109,7 @@ export function SummaryStage({
 
         <section className="mt-5 rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
           <h3 className="text-base font-medium text-retro-strong">
-            {showSprintLabel
-              ? `Top Priorities for ${nextSprintDisplayLabel || sprintDisplayLabel}`
-              : "Top Priorities"}
+            {showSprintLabel ? `Top Priorities for ${nextSprintDisplayLabel || sprintDisplayLabel}` : "Top Priorities"}
           </h3>
           {actionItems.length > 0 ? (
             <ul className="mt-3 flex list-none flex-col gap-2 p-0">
@@ -82,69 +125,8 @@ export function SummaryStage({
         </section>
 
         <div className="mt-6 grid grid-cols-2 gap-4 max-[840px]:grid-cols-1">
-          <section className="rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
-            <h3 className="text-base font-medium text-retro-strong">What Went Right</h3>
-            <ul className="mt-3 flex list-none flex-col gap-2 p-0">
-              {sortedRight.map((item) => (
-                <li key={item.id} className="rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 py-2 text-sm text-retro-strong">
-                  {item.kind === "item" ? (
-                    <>
-                      <p className="break-words">{item.text}</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        {entryBadge(item.id)}
-                        <span className="text-xs text-retro-muted">{item.votes} votes</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium">{item.name}</p>
-                      <ul className="mt-2 flex list-none flex-col gap-1 p-0">
-                        {item.items.map((groupedItem) => (
-                          <li key={groupedItem.id} className="flex items-start gap-2 text-xs text-retro-body">
-                            {entryBadge(groupedItem.id)}
-                            <span className="break-words">{groupedItem.text}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="mt-2 text-right text-xs text-retro-muted">{item.votes} votes</p>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-[14px] border border-retro-border-soft bg-retro-card p-4">
-            <h3 className="text-base font-medium text-retro-strong">What Went Wrong</h3>
-            <ul className="mt-3 flex list-none flex-col gap-2 p-0">
-              {sortedWrong.map((item) => (
-                <li key={item.id} className="rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 py-2 text-sm text-retro-strong">
-                  {item.kind === "item" ? (
-                    <>
-                      <p className="break-words">{item.text}</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        {entryBadge(item.id)}
-                        <span className="text-xs text-retro-muted">{item.votes} votes</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium">{item.name}</p>
-                      <ul className="mt-2 flex list-none flex-col gap-1 p-0">
-                        {item.items.map((groupedItem) => (
-                          <li key={groupedItem.id} className="flex items-start gap-2 text-xs text-retro-body">
-                            {entryBadge(groupedItem.id)}
-                            <span className="break-words">{groupedItem.text}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="mt-2 text-right text-xs text-retro-muted">{item.votes} votes</p>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
+          <SummaryColumn title="What Went Right" items={sortedRight} entryBadge={entryBadge} />
+          <SummaryColumn title="What Went Wrong" items={sortedWrong} entryBadge={entryBadge} />
         </div>
       </div>
     </section>

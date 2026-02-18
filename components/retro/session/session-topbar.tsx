@@ -44,14 +44,16 @@ export function SessionTopBar({
               <span className="rounded-[10px] border border-retro-border bg-retro-surface-soft px-2.5 py-1">{sprintDisplayLabel}</span>
             ) : null}
             <span className="rounded-[10px] border border-retro-border bg-retro-surface-soft px-2.5 py-1">{sessionId}</span>
-            <button
+            <Button
               type="button"
-              className="inline-flex items-center gap-1 rounded-[10px] border border-retro-border bg-retro-surface-soft px-2.5 py-1 text-retro-body"
+              variant="outline"
+              size="sm"
+              className="h-auto rounded-[10px] px-2.5 py-1 text-xs text-retro-body"
               onClick={onCopyInviteLink}
             >
               <Share2 className="size-3.5" />
               {inviteCopied ? "Copied" : "Copy invite link"}
-            </button>
+            </Button>
           </div>
         </div>
         <div className="flex items-center gap-2">
