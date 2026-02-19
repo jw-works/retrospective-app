@@ -1,20 +1,28 @@
 import assert from "node:assert/strict";
 import { before, after, beforeEach, test } from "node:test";
 import { spawn, spawnSync } from "node:child_process";
+import * as nextEnv from "@next/env";
 import pg from "pg";
 
 const { Client } = pg;
+const loadEnvConfig =
+  nextEnv.loadEnvConfig ??
+  nextEnv.default?.loadEnvConfig;
+
+if (loadEnvConfig) {
+  loadEnvConfig(process.cwd());
+}
 
 const PORT = Number(process.env.TEST_PORT ?? "4031");
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-const DATABASE_URL = process.env.DATABASE_URL?.trim();
 let devServer;
 
 function requireDatabaseUrl() {
-  if (!DATABASE_URL) {
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (!databaseUrl) {
     throw new Error("DATABASE_URL must be set to run backend integration tests");
   }
-  return DATABASE_URL;
+  return databaseUrl;
 }
 
 async function waitForServerReady() {
@@ -104,10 +112,11 @@ beforeEach(async () => {
   await resetDatabase();
 });
 
-async function createSessionAndUser() {
+async function createSessionAndUser(options = {}) {
+  const { voteLimit } = options;
   const create = await api("/api/sessions", {
     method: "POST",
-    body: { title: "Sprint 14 Retro", adminName: "Owner" }
+    body: { title: "Sprint 14 Retro", adminName: "Owner", ...(voteLimit ? { voteLimit } : {}) }
   });
 
   assert.equal(create.status, 200);
@@ -138,9 +147,18 @@ test("session lifecycle: create, join, and read state", async () => {
   assert.equal(state.payload.participants.length, 2);
   assert.equal(state.payload.viewer.isAdmin, true);
   assert.equal(state.payload.viewer.votesRemaining, 5);
+  assert.equal(state.payload.session.voteLimit, 5);
 
   const participantIds = state.payload.participants.map((p) => p.id);
   assert.ok(participantIds.includes(userId));
+});
+
+test("session uses custom vote limit set at creation", async () => {
+  const { slug, adminToken } = await createSessionAndUser({ voteLimit: 3 });
+  const state = await api(`/api/sessions/${slug}/state`, { token: adminToken });
+  assert.equal(state.status, 200);
+  assert.equal(state.payload.session.voteLimit, 3);
+  assert.equal(state.payload.viewer.votesRemaining, 3);
 });
 
 test("entry permissions and admin clear behavior", async () => {
@@ -367,4 +385,47 @@ test("grouping, moving entries, and action-item admin checks", async () => {
     }
   );
   assert.equal(adminActionDelete.status, 200);
+});
+
+test("multiple sessions stay isolated when active at the same time", async () => {
+  const first = await api("/api/sessions", {
+    method: "POST",
+    body: { title: "Session A", adminName: "Admin A" }
+  });
+  const second = await api("/api/sessions", {
+    method: "POST",
+    body: { title: "Session B", adminName: "Admin B" }
+  });
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+
+  const firstSlug = first.payload.session.slug;
+  const secondSlug = second.payload.session.slug;
+  const firstToken = first.payload.token;
+  const secondToken = second.payload.token;
+
+  const firstEntry = await api(`/api/sessions/${firstSlug}/entries`, {
+    method: "POST",
+    token: firstToken,
+    body: { type: "went_right", content: "Only in A" }
+  });
+  const secondEntry = await api(`/api/sessions/${secondSlug}/entries`, {
+    method: "POST",
+    token: secondToken,
+    body: { type: "went_wrong", content: "Only in B" }
+  });
+
+  assert.equal(firstEntry.status, 200);
+  assert.equal(secondEntry.status, 200);
+
+  const firstState = await api(`/api/sessions/${firstSlug}/state`, { token: firstToken });
+  const secondState = await api(`/api/sessions/${secondSlug}/state`, { token: secondToken });
+  assert.equal(firstState.status, 200);
+  assert.equal(secondState.status, 200);
+
+  assert.equal(firstState.payload.entries.length, 1);
+  assert.equal(secondState.payload.entries.length, 1);
+  assert.equal(firstState.payload.entries[0].content, "Only in A");
+  assert.equal(secondState.payload.entries[0].content, "Only in B");
 });

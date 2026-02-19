@@ -4,7 +4,7 @@ import type { EntryType, Section, SessionStateResponse } from "@/lib/backend/typ
 type ApiError = { error?: string };
 
 export type CreateSessionResult = {
-  session: { slug: string };
+  session: { slug: string; voteLimit: number };
   token: string;
 };
 
@@ -35,7 +35,7 @@ function toApiError(payload: unknown): ApiError {
   return {};
 }
 
-export async function createSession(input: { title: string; adminName: string; sprintLabel?: string }): Promise<CreateSessionResult> {
+export async function createSession(input: { title: string; adminName: string; sprintLabel?: string; voteLimit?: number }): Promise<CreateSessionResult> {
   const response = await fetch("/api/sessions", {
     method: "POST",
     headers: headers(),

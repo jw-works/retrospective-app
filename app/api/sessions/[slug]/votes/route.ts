@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Adds a single vote for an entry (store enforces 5-vote cap per participant).
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "votes.add" });
     const { slug } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { entryId?: string };

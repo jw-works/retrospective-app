@@ -7,6 +7,7 @@ type SetupScreenProps = {
   teamName: string;
   adminName: string;
   sprintLabel: string;
+  voteLimit: string;
   joinSessionCode: string;
   joinParticipantName: string;
   canEnterRetro: boolean;
@@ -16,6 +17,7 @@ type SetupScreenProps = {
   onTeamNameChange: (value: string) => void;
   onAdminNameChange: (value: string) => void;
   onSprintLabelChange: (value: string) => void;
+  onVoteLimitChange: (value: string) => void;
   onJoinSessionCodeChange: (value: string) => void;
   onJoinParticipantNameChange: (value: string) => void;
   onCreateSession: () => void;
@@ -28,6 +30,7 @@ export function SetupScreen({
   teamName,
   adminName,
   sprintLabel,
+  voteLimit,
   joinSessionCode,
   joinParticipantName,
   canEnterRetro,
@@ -37,6 +40,7 @@ export function SetupScreen({
   onTeamNameChange,
   onAdminNameChange,
   onSprintLabelChange,
+  onVoteLimitChange,
   onJoinSessionCodeChange,
   onJoinParticipantNameChange,
   onCreateSession,
@@ -116,17 +120,34 @@ export function SetupScreen({
                   onChange={(event) => onAdminNameChange(event.target.value)}
                 />
               </div>
-              <div>
-                <Label htmlFor="sprint-label" className="mb-1 block text-sm text-retro-strong">
-                  Sprint Number (optional)
-                </Label>
-                <Input
-                  id="sprint-label"
-                  className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
-                  placeholder="e.g. 24"
-                  value={sprintLabel}
-                  onChange={(event) => onSprintLabelChange(event.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+                <div>
+                  <Label htmlFor="sprint-label" className="mb-1 block text-sm text-retro-strong">
+                    Sprint Number (optional)
+                  </Label>
+                  <Input
+                    id="sprint-label"
+                    className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
+                    placeholder="e.g. 24"
+                    value={sprintLabel}
+                    onChange={(event) => onSprintLabelChange(event.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vote-limit" className="mb-1 block text-sm text-retro-strong">
+                    Votes Per Person
+                  </Label>
+                  <Input
+                    id="vote-limit"
+                    type="number"
+                    min={1}
+                    max={20}
+                    className="block h-[44px] w-full rounded-[12px] border border-retro-border-soft bg-retro-card-strong px-3 text-retro-strong placeholder:text-retro-subtle"
+                    placeholder="e.g. 5"
+                    value={voteLimit}
+                    onChange={(event) => onVoteLimitChange(event.target.value)}
+                  />
+                </div>
               </div>
             </div>
 

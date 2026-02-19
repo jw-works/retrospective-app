@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Removes an entry from a group; group may auto-cleanup if too small.
 export async function DELETE(
@@ -8,6 +8,7 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string; entryId: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "groups.ungroup_entry" });
     const { slug, entryId } = await params;
     const token = requireToken(request);
     const result = await backendStore.ungroupEntry({ slug, token, entryId });

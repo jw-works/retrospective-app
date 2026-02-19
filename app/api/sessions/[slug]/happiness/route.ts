@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Upserts an individual happiness score (1-10) for the current participant.
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "happiness.upsert" });
     const { slug } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { score?: number };

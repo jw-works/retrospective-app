@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 import type { EntryType } from "@/lib/backend/types";
 
 // Moves an entry between "went right" and "went wrong" columns.
@@ -11,6 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ slug: string; entryId: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "entries.move" });
     const { slug, entryId } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { type?: EntryType };

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Adds one existing entry into an existing group.
 export async function POST(
@@ -8,6 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ slug: string; groupId: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "groups.add_entry" });
     const { slug, groupId } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { entryId?: string };

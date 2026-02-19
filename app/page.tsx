@@ -94,6 +94,7 @@ function HomeContent() {
   });
   const [teamName, setTeamName] = useState("");
   const [sprintLabel, setSprintLabel] = useState("");
+  const [voteLimitInput, setVoteLimitInput] = useState("5");
   const [adminName, setAdminName] = useState("");
   const [joinSessionCode, setJoinSessionCode] = useState(() => inviteSlugFromUrl);
   const [joinParticipantName, setJoinParticipantName] = useState("");
@@ -258,8 +259,13 @@ function HomeContent() {
     );
   };
 
+  const parsedVoteLimit = Number(voteLimitInput);
   const canEnterRetro =
-    teamName.trim().length > 0 && adminName.trim().length > 0;
+    teamName.trim().length > 0 &&
+    adminName.trim().length > 0 &&
+    Number.isInteger(parsedVoteLimit) &&
+    parsedVoteLimit >= 1 &&
+    parsedVoteLimit <= 20;
   const canJoinSession =
     joinSessionCode.trim().length > 0 && joinParticipantName.trim().length > 0;
   const happinessMood =
@@ -286,6 +292,7 @@ function HomeContent() {
     setSessionState(state);
     setTeamName(state.session.title);
     setSprintLabel(state.session.sprintLabel ?? "");
+    setVoteLimitInput(String(state.session.voteLimit));
     const admin = state.participants.find((participant) => participant.isAdmin);
     if (admin) setAdminName(admin.name);
     const nextRight = toRetroItems(state.entries, state.groups, "went_right");
@@ -359,6 +366,7 @@ function HomeContent() {
     setWentRightItems([]);
     setWentWrongItems([]);
     setSprintLabel("");
+    setVoteLimitInput("5");
     setDiscussionQueue([]);
     setDiscussionIndex(0);
     setDiscussionMode(false);
@@ -526,6 +534,7 @@ function HomeContent() {
         title: teamName.trim(),
         adminName: adminName.trim(),
         sprintLabel: sprintLabel.trim(),
+        voteLimit: parsedVoteLimit,
       });
       const slug = payload.session.slug;
       setStoredActiveSlug(slug);
@@ -539,7 +548,7 @@ function HomeContent() {
         error instanceof Error ? error.message : "Unable to create session",
       );
     }
-  }, [adminName, canEnterRetro, loadSessionState, sprintLabel, teamName]);
+  }, [adminName, canEnterRetro, loadSessionState, parsedVoteLimit, sprintLabel, teamName]);
 
   const addStandaloneItem = (side: Side, text: string) => {
     const type = side === "right" ? "went_right" : "went_wrong";
@@ -994,6 +1003,7 @@ function HomeContent() {
           teamName={teamName}
           adminName={adminName}
           sprintLabel={sprintLabel}
+          voteLimit={voteLimitInput}
           joinSessionCode={joinSessionCode}
           joinParticipantName={joinParticipantName}
           canEnterRetro={canEnterRetro}
@@ -1003,6 +1013,7 @@ function HomeContent() {
           onTeamNameChange={setTeamName}
           onAdminNameChange={setAdminName}
           onSprintLabelChange={setSprintLabel}
+          onVoteLimitChange={setVoteLimitInput}
           onJoinSessionCodeChange={setJoinSessionCode}
           onJoinParticipantNameChange={setJoinParticipantName}
           onCreateSession={launchSession}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 import type { Section } from "@/lib/backend/types";
 
 // Admin-only endpoint controlling the shared stage for all participants.
@@ -8,6 +8,7 @@ const sections: Section[] = ["retro", "discussion", "actions", "happiness", "don
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "navigation.set" });
     const { slug } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { activeSection?: Section; discussionEntryId?: string | null };

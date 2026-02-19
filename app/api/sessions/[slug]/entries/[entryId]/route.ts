@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Deletes one entry (permission checks are enforced in store layer).
 export async function DELETE(
@@ -8,6 +8,7 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string; entryId: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "entries.delete" });
     const { slug, entryId } = await params;
     const token = requireToken(request);
     const result = await backendStore.deleteEntry({ slug, token, entryId });
@@ -23,6 +24,7 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string; entryId: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "entries.update" });
     const { slug, entryId } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { content?: string };

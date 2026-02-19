@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Creates a new group by merging two standalone entries on the same side.
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "groups.create" });
     const { slug } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { sourceEntryId?: string; targetEntryId?: string; name?: string };

@@ -21,7 +21,14 @@ function base64UrlDecode(input: string) {
 }
 
 function getTokenSecret() {
-  return process.env.AUTH_TOKEN_SECRET || process.env.NEXTAUTH_SECRET || FALLBACK_SECRET;
+  const configured = process.env.AUTH_TOKEN_SECRET || process.env.NEXTAUTH_SECRET;
+  if (configured) return configured;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_TOKEN_SECRET is required in production");
+  }
+
+  return FALLBACK_SECRET;
 }
 
 function getTokenTtlSeconds() {

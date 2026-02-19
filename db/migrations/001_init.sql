@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   slug TEXT UNIQUE NOT NULL,
   title TEXT NOT NULL,
   sprint_label TEXT,
+  vote_limit INTEGER NOT NULL DEFAULT 5 CHECK (vote_limit BETWEEN 1 AND 20),
   created_by_participant_id UUID NOT NULL,
   phase TEXT NOT NULL CHECK (phase IN ('collecting', 'discussing', 'finished')),
   created_at TIMESTAMPTZ NOT NULL,

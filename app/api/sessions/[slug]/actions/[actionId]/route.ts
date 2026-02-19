@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Admin-only endpoint to remove sprint action items.
 export async function DELETE(
@@ -8,6 +8,7 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string; actionId: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "actions.delete" });
     const { slug, actionId } = await params;
     const token = requireToken(request);
     const result = await backendStore.deleteActionItem({ slug, token, actionItemId: actionId });

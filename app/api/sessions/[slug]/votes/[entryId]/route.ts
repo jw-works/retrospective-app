@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Removes the viewer's vote for one entry.
 export async function DELETE(
@@ -8,6 +8,7 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string; entryId: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "votes.remove" });
     const { slug, entryId } = await params;
     const token = requireToken(request);
     const result = await backendStore.removeVote({ slug, token, entryId });

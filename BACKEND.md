@@ -8,6 +8,11 @@ Required env vars:
 - `DATABASE_URL` (PostgreSQL connection string)
 - `AUTH_TOKEN_SECRET` (recommended outside local dev)
 
+Optional rate-limit env vars:
+- `RATE_LIMIT_ENABLED` (default `true`)
+- `RATE_LIMIT_WRITE_LIMIT` / `RATE_LIMIT_WRITE_WINDOW_MS`
+- `RATE_LIMIT_READ_LIMIT` / `RATE_LIMIT_READ_WINDOW_MS`
+
 ## Quick flow
 
 Run backend integration tests:
@@ -61,3 +66,7 @@ curl http://localhost:3000/api/sessions/<slug>/state
 - `http://localhost:3000/session/<slug>`
 
 These pages are intentionally simple and meant as a working baseline for iteration.
+
+## Architecture
+
+See `docs/ARCHITECTURE.md` for architecture details, multi-session behavior, and operations runbook.

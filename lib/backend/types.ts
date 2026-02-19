@@ -21,6 +21,7 @@ export type Session = {
   slug: string;
   title: string;
   sprintLabel?: string | null;
+  voteLimit: number;
   createdByParticipantId: string;
   phase: SessionPhase;
   createdAt: string;
@@ -111,7 +112,7 @@ export type SessionViewer = {
 };
 
 export type SessionStateResponse = {
-  session: Pick<Session, "id" | "slug" | "title" | "sprintLabel" | "phase" | "createdAt" | "updatedAt">;
+  session: Pick<Session, "id" | "slug" | "title" | "sprintLabel" | "voteLimit" | "phase" | "createdAt" | "updatedAt">;
   participants: PublicParticipant[];
   entries: (Entry & { votes: number; votedByViewer: boolean })[];
   groups: EntryGroup[];

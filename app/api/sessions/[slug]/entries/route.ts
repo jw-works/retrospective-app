@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 import type { EntryType } from "@/lib/backend/types";
 
 // Handles entry creation and admin "clear all entries" action.
@@ -8,6 +8,7 @@ const entryTypes: EntryType[] = ["went_right", "went_wrong"];
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "entries.create" });
     const { slug } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { type?: EntryType; content?: string };
@@ -28,6 +29,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "entries.clear" });
     const { slug } = await params;
     const token = requireToken(request);
     const result = await backendStore.clearEntries({ slug, token });

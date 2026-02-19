@@ -16,7 +16,9 @@ import type {
   Vote
 } from "@/lib/backend/types";
 
-const VOTE_LIMIT_PER_PARTICIPANT = 5;
+const DEFAULT_VOTE_LIMIT = 5;
+const MIN_VOTE_LIMIT = 1;
+const MAX_VOTE_LIMIT = 20;
 
 const nowIso = () => new Date().toISOString();
 
@@ -109,6 +111,7 @@ function toSession(row: {
   slug: string;
   title: string;
   sprint_label: string | null;
+  vote_limit: number;
   created_by_participant_id: string;
   phase: string;
   created_at: string | Date;
@@ -119,6 +122,7 @@ function toSession(row: {
     slug: row.slug,
     title: row.title,
     sprintLabel: row.sprint_label,
+    voteLimit: row.vote_limit,
     createdByParticipantId: row.created_by_participant_id,
     phase: row.phase as SessionPhase,
     createdAt: toIso(row.created_at),
@@ -248,12 +252,13 @@ async function querySessionBySlug(client: PoolClient, slug: string): Promise<Ses
     slug: string;
     title: string;
     sprint_label: string | null;
+    vote_limit: number;
     created_by_participant_id: string;
     phase: string;
     created_at: string | Date;
     updated_at: string | Date;
   }>(
-    `SELECT id, slug, title, sprint_label, created_by_participant_id, phase, created_at, updated_at
+    `SELECT id, slug, title, sprint_label, vote_limit, created_by_participant_id, phase, created_at, updated_at
      FROM sessions
      WHERE slug = $1`,
     [slug]
@@ -268,12 +273,13 @@ async function querySessionById(client: PoolClient, sessionId: string): Promise<
     slug: string;
     title: string;
     sprint_label: string | null;
+    vote_limit: number;
     created_by_participant_id: string;
     phase: string;
     created_at: string | Date;
     updated_at: string | Date;
   }>(
-    `SELECT id, slug, title, sprint_label, created_by_participant_id, phase, created_at, updated_at
+    `SELECT id, slug, title, sprint_label, vote_limit, created_by_participant_id, phase, created_at, updated_at
      FROM sessions
      WHERE id = $1`,
     [sessionId]
@@ -470,7 +476,7 @@ async function buildSessionState(client: PoolClient, session: Session, viewer: P
       isAdmin: Boolean(row.is_admin),
       createdAt: toIso(row.created_at as string | Date),
       votesUsed,
-      votesRemaining: Math.max(0, VOTE_LIMIT_PER_PARTICIPANT - votesUsed)
+      votesRemaining: Math.max(0, session.voteLimit - votesUsed)
     };
   });
 
@@ -521,6 +527,7 @@ async function buildSessionState(client: PoolClient, session: Session, viewer: P
       slug: session.slug,
       title: session.title,
       sprintLabel: session.sprintLabel ?? null,
+      voteLimit: session.voteLimit,
       phase: session.phase,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt
@@ -536,7 +543,7 @@ async function buildSessionState(client: PoolClient, session: Session, viewer: P
           name: viewer.name,
           isAdmin: viewer.isAdmin,
           votesUsed: viewerVotesUsed,
-          votesRemaining: Math.max(0, VOTE_LIMIT_PER_PARTICIPANT - viewerVotesUsed)
+          votesRemaining: Math.max(0, session.voteLimit - viewerVotesUsed)
         }
       : null,
     happiness: {
@@ -548,12 +555,16 @@ async function buildSessionState(client: PoolClient, session: Session, viewer: P
 }
 
 export const backendStore = {
-  async createSession(input: { title: string; adminName: string; sprintLabel?: string }) {
+  async createSession(input: { title: string; adminName: string; sprintLabel?: string; voteLimit?: number }) {
     return withTransaction(async (client) => {
       const title = input.title.trim();
       const adminName = input.adminName.trim();
       if (!title) throw new Error("title is required");
       if (!adminName) throw new Error("adminName is required");
+      const rawVoteLimit = input.voteLimit ?? DEFAULT_VOTE_LIMIT;
+      if (!Number.isInteger(rawVoteLimit) || rawVoteLimit < MIN_VOTE_LIMIT || rawVoteLimit > MAX_VOTE_LIMIT) {
+        throw new Error(`voteLimit must be an integer between ${MIN_VOTE_LIMIT} and ${MAX_VOTE_LIMIT}`);
+      }
 
       const now = nowIso();
       const sessionId = randomUUID();
@@ -567,9 +578,9 @@ export const backendStore = {
       }
 
       await client.query(
-        `INSERT INTO sessions (id, slug, title, sprint_label, created_by_participant_id, phase, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, 'collecting', $6, $6)`,
-        [sessionId, slug, title, input.sprintLabel?.trim() || null, participantId, now]
+        `INSERT INTO sessions (id, slug, title, sprint_label, vote_limit, created_by_participant_id, phase, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'collecting', $7, $7)`,
+        [sessionId, slug, title, input.sprintLabel?.trim() || null, rawVoteLimit, participantId, now]
       );
 
       await client.query(
@@ -859,7 +870,7 @@ export const backendStore = {
         [session.id, participant.id]
       );
       const usedVotes = Number(usedVotesResult.rows[0]?.count ?? "0");
-      if (usedVotes >= VOTE_LIMIT_PER_PARTICIPANT) throw new Error("Vote limit reached");
+      if (usedVotes >= session.voteLimit) throw new Error("Vote limit reached");
 
       const voteId = randomUUID();
       const now = nowIso();

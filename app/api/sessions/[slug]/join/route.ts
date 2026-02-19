@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse } from "@/lib/backend/http";
 
 // Participant join endpoint for invite flows.
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "sessions.join" });
     const { slug } = await params;
     const body = (await request.json()) as { name?: string };
     const name = body.name?.trim();

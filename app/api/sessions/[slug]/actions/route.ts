@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { backendStore } from "@/lib/backend/store";
-import { mapErrorToResponse, requireToken } from "@/lib/backend/http";
+import { enforceRequestRateLimit, mapErrorToResponse, requireToken } from "@/lib/backend/http";
 
 // Admin-only endpoint to add sprint action items.
 export async function POST(
@@ -8,6 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    enforceRequestRateLimit(request, { kind: "write", scope: "actions.create" });
     const { slug } = await params;
     const token = requireToken(request);
     const body = (await request.json()) as { content?: string };

@@ -10,12 +10,13 @@ Implemented and active right now:
 - PostgreSQL persistence via `DATABASE_URL`
 - Explicit SQL migrations (`db/migrations/001_init.sql`) applied via `npm run db:migrate`
 - Transactional backend store with permission checks and core business rules
+- Request rate limiting for API routes
 - Integration test suite for backend API behavior (`tests/backend.integration.test.mjs`)
+- Playwright E2E browser tests for core facilitator/participant flows
+- CI workflow running migrations + typecheck + lint + integration tests
 - TypeScript strict checks and ESLint checks passing
 
 Still recommended next:
-- Add CI pipeline for migrations + lint + tests
-- Add frontend end-to-end tests (Playwright/Cypress)
 - Address npm audit vulnerabilities with controlled package upgrades
 
 ## What The App Does
@@ -48,6 +49,8 @@ Still recommended next:
 - `scripts/db-migrate.mjs`: SQL migration runner
 - `db/migrations/001_init.sql`: initial schema migration
 - `tests/backend.integration.test.mjs`: integration tests against running Next server
+- `.github/workflows/ci.yml`: CI pipeline for quality gates
+- `docs/ARCHITECTURE.md`: architecture, operations, and scaling notes
 
 ## Data Model
 
@@ -78,6 +81,11 @@ Optional:
 - `PGSSLMODE=require`: use for hosted Postgres that requires TLS
 - `AUTH_TOKEN_TTL_SECONDS`: participant token TTL (default `43200`)
 - `ERROR_MONITORING_WEBHOOK_URL`: optional error webhook
+- `RATE_LIMIT_ENABLED`: set to `false` to disable API rate limiting (default enabled)
+- `RATE_LIMIT_WRITE_LIMIT`: write requests per window per IP (default `120`)
+- `RATE_LIMIT_WRITE_WINDOW_MS`: write rate-limit window in ms (default `60000`)
+- `RATE_LIMIT_READ_LIMIT`: read requests per window per IP (default `300`)
+- `RATE_LIMIT_READ_WINDOW_MS`: read rate-limit window in ms (default `60000`)
 
 ## Local Development
 
@@ -124,6 +132,22 @@ npm run db:migrate
 npm run test:backend
 ```
 
+E2E browser tests:
+
+```bash
+npx playwright install
+npm run test:e2e
+```
+
+## Multi-Session Behavior
+
+The backend supports multiple active sessions concurrently.
+
+How isolation is enforced:
+- every query is scoped by `session_id`
+- participant tokens are bound to a specific session id
+- integration tests include parallel-session isolation checks
+
 ## API Summary
 
 All routes are under `/api/sessions`.
@@ -155,6 +179,15 @@ Authenticated endpoints require:
 - Run `npm run db:migrate` during deploy/startup before serving traffic.
 - For managed Postgres with TLS requirements, set `PGSSLMODE=require`.
 
+## Production Checklist
+
+- Configure `AUTH_TOKEN_SECRET` from your secrets manager (do not commit it).
+- Keep `RATE_LIMIT_*` values set for your expected traffic profile.
+- Ensure automated backups of PostgreSQL and periodic restore drills.
+- Enforce CI checks from `.github/workflows/ci.yml` on protected branches.
+- Review and remediate `npm audit` output regularly (Dependabot config included).
+
 ## Related Docs
 
 - `BACKEND.md` for cURL examples and backend flow details.
+- `docs/ARCHITECTURE.md` for system architecture and production operations.
