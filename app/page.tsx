@@ -130,12 +130,8 @@ function HomeContent() {
   const [happinessScore, setHappinessScore] = useState(7);
   const [happinessSubmitted, setHappinessSubmitted] = useState(false);
   const [actionItemInput, setActionItemInput] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    const savedTheme = window.localStorage.getItem(THEME_KEY);
-    if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [themeReady, setThemeReady] = useState(false);
   const sessionId = sessionSlug || "SES-7K2P9M";
   const activeSprintLabel = sessionState?.session.sprintLabel?.trim() || sprintLabel.trim();
   const sprintDisplayLabel = activeSprintLabel
@@ -415,9 +411,26 @@ function HomeContent() {
   }, [sessionSlug]);
 
   useEffect(() => {
+    const savedTheme = window.localStorage.getItem(THEME_KEY);
+    const initialTheme =
+      savedTheme === "dark" || savedTheme === "light"
+        ? savedTheme
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+
+    const timeout = window.setTimeout(() => {
+      setTheme(initialTheme);
+      setThemeReady(true);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (!themeReady) return;
     document.documentElement.classList.toggle("dark", theme === "dark");
     window.localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
+  }, [theme, themeReady]);
 
   useEffect(() => {
     if (!sessionSlug || !participantToken || !isSetupComplete) return;
@@ -992,6 +1005,7 @@ function HomeContent() {
         stageLabel={stageLabel}
         currentStageIndex={currentStageIndex}
         theme={theme}
+        themeReady={themeReady}
         onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
         currentUserTone={currentUserTone}
         currentUserInitials={currentUserInitials}

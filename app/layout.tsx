@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 // Root app shell that injects global styles and shared HTML/body wrappers.
@@ -13,7 +14,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`(() => {
+            try {
+              const key = "retro.theme";
+              const saved = localStorage.getItem(key);
+              const isDark = saved === "dark" || (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+              document.documentElement.classList.toggle("dark", isDark);
+            } catch {}
+          })();`}
+        </Script>
+      </head>
       <body>{children}</body>
     </html>
   );

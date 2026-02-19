@@ -8,6 +8,7 @@ type AppShellHeaderProps = {
   stageLabel: Record<string, string>;
   currentStageIndex: number;
   theme: "light" | "dark";
+  themeReady: boolean;
   onToggleTheme: () => void;
   currentUserTone: number;
   currentUserInitials: string;
@@ -19,6 +20,7 @@ export function AppShellHeader({
   stageLabel,
   currentStageIndex,
   theme,
+  themeReady,
   onToggleTheme,
   currentUserTone,
   currentUserInitials,
@@ -63,7 +65,7 @@ export function AppShellHeader({
           className="grid size-[34px] place-items-center rounded-full border border-retro-border bg-retro-surface-soft text-retro-strong"
           onClick={onToggleTheme}
         >
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          {!themeReady ? <Moon className="size-4" /> : theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </button>
         <Avatar className={`identity-badge identity-tone-${currentUserTone} size-[34px] border shadow-[0_10px_22px_rgba(0,0,0,0.07)]`}>
           <AvatarFallback className="bg-transparent text-[11px] font-medium text-inherit">
