@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:backend": "bash scripts/backend-smoke-test.sh"
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "test:backend:integration": "node --test tests/backend.integration.test.mjs",
+    "test:backend": "npm run test:backend:integration"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "latest",
@@ -17,6 +19,7 @@
     "clsx": "latest",
     "lucide-react": "latest",
     "next": "latest",
+    "pg": "^8.18.0",
     "radix-ui": "^1.4.3",
     "react": "latest",
     "react-dom": "latest",
@@ -25,6 +28,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
     "@types/node": "latest",
+    "@types/pg": "^8.15.6",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "eslint": "latest",

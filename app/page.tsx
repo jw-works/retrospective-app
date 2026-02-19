@@ -75,6 +75,7 @@ type PendingEdit = {
 };
 
 const THEME_KEY = "retro.theme";
+const topicToEntryId = (topicId: string) => topicId.split(":")[1] ?? topicId;
 
 // Main application orchestrator:
 // - bootstraps/joins sessions,
@@ -85,15 +86,28 @@ function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteSlugFromUrl = parseSessionCode(searchParams.get("join") ?? "");
-  const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [isSetupComplete, setIsSetupComplete] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const targetSlug = inviteSlugFromUrl || getStoredActiveSlug();
+    if (!targetSlug) return false;
+    return Boolean(getStoredToken(targetSlug));
+  });
   const [teamName, setTeamName] = useState("");
   const [sprintLabel, setSprintLabel] = useState("");
   const [adminName, setAdminName] = useState("");
-  const [joinSessionCode, setJoinSessionCode] = useState("");
+  const [joinSessionCode, setJoinSessionCode] = useState(() => inviteSlugFromUrl);
   const [joinParticipantName, setJoinParticipantName] = useState("");
   const [inviteCopied, setInviteCopied] = useState(false);
-  const [sessionSlug, setSessionSlug] = useState("");
-  const [participantToken, setParticipantToken] = useState("");
+  const [sessionSlug, setSessionSlug] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return inviteSlugFromUrl || getStoredActiveSlug() || "";
+  });
+  const [participantToken, setParticipantToken] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const targetSlug = inviteSlugFromUrl || getStoredActiveSlug();
+    if (!targetSlug) return "";
+    return getStoredToken(targetSlug) || "";
+  });
   const [sessionState, setSessionState] = useState<SessionStateResponse | null>(
     null,
   );
@@ -115,7 +129,12 @@ function HomeContent() {
   const [happinessScore, setHappinessScore] = useState(7);
   const [happinessSubmitted, setHappinessSubmitted] = useState(false);
   const [actionItemInput, setActionItemInput] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    const savedTheme = window.localStorage.getItem(THEME_KEY);
+    if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
   const sessionId = sessionSlug || "SES-7K2P9M";
   const activeSprintLabel = sessionState?.session.sprintLabel?.trim() || sprintLabel.trim();
   const sprintDisplayLabel = activeSprintLabel
@@ -279,7 +298,7 @@ function HomeContent() {
     if (queue.length > 0) {
       const targetId = state.navigation.discussionEntryId;
       const queueIndex = targetId
-        ? queue.findIndex((topic) => topic.id === targetId)
+        ? queue.findIndex((topic) => topicToEntryId(topic.id) === targetId)
         : 0;
       setDiscussionIndex(queueIndex >= 0 ? queueIndex : 0);
     } else {
@@ -388,58 +407,56 @@ function HomeContent() {
   }, [sessionSlug]);
 
   useEffect(() => {
-    if (!inviteSlugFromUrl) return;
-    setJoinSessionCode(inviteSlugFromUrl);
-  }, [inviteSlugFromUrl]);
-
-  useEffect(() => {
-    const savedTheme = window.localStorage.getItem(THEME_KEY);
-    const initialTheme =
-      savedTheme === "dark" || savedTheme === "light"
-        ? savedTheme
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle("dark", initialTheme === "dark");
-  }, []);
-
-  useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     window.localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
 
   useEffect(() => {
-    const slug = getStoredActiveSlug();
-    const targetSlug = inviteSlugFromUrl || slug;
-    if (!targetSlug) return;
-    const token = getStoredToken(targetSlug);
-    if (!token) return;
+    if (!sessionSlug || !participantToken || !isSetupComplete) return;
+    const timeout = window.setTimeout(() => {
+      loadSessionState(sessionSlug, participantToken).catch((error: unknown) => {
+        if (isRecoverableSessionError(error)) {
+          clearStoredToken(sessionSlug);
+          clearStoredActiveSlug();
+          setSessionSlug("");
+          setParticipantToken("");
+          setSessionState(null);
+          setWentRightItems([]);
+          setWentWrongItems([]);
+          setIsSetupComplete(false);
+          setApiError("Saved session no longer exists. Please create or join a new session.");
+          router.replace("/");
+          return;
+        }
+        setApiError(
+          error instanceof Error
+            ? error.message
+            : "Unable to restore previous session",
+        );
+      });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [
+    isRecoverableSessionError,
+    isSetupComplete,
+    loadSessionState,
+    participantToken,
+    router,
+    sessionSlug,
+  ]);
 
-    setSessionSlug(targetSlug);
-    setParticipantToken(token);
-    setIsSetupComplete(true);
-    loadSessionState(targetSlug, token).catch((error: unknown) => {
-      if (isRecoverableSessionError(error)) {
-        clearStoredToken(targetSlug);
-        clearStoredActiveSlug();
-        setSessionSlug("");
-        setParticipantToken("");
-        setSessionState(null);
-        setWentRightItems([]);
-        setWentWrongItems([]);
-        setIsSetupComplete(false);
-        setApiError("Saved session no longer exists. Please create or join a new session.");
-        router.replace("/");
-        return;
-      }
-      setApiError(
-        error instanceof Error
-          ? error.message
-          : "Unable to restore previous session",
-      );
-    });
-  }, [inviteSlugFromUrl, isRecoverableSessionError, loadSessionState, router]);
+  useEffect(() => {
+    if (!isSetupComplete) return;
+    if (sessionState?.navigation.activeSection !== "done") return;
+    const timeout = window.setTimeout(() => {
+      resetToCreateSession();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [
+    isSetupComplete,
+    resetToCreateSession,
+    sessionState?.navigation.activeSection,
+  ]);
 
   useEffect(() => {
     if (!sessionSlug || !participantToken || !isSetupComplete) return;
@@ -459,16 +476,6 @@ function HomeContent() {
     participantToken,
     resetToCreateSession,
     sessionSlug,
-  ]);
-
-  useEffect(() => {
-    if (!isSetupComplete) return;
-    if (sessionState?.navigation.activeSection !== "done") return;
-    resetToCreateSession();
-  }, [
-    isSetupComplete,
-    resetToCreateSession,
-    sessionState?.navigation.activeSection,
   ]);
 
   const addWentRight = () => {
@@ -827,7 +834,7 @@ function HomeContent() {
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
         activeSection: "discussion",
-        discussionEntryId: queue[0]?.id ?? null,
+        discussionEntryId: queue[0] ? topicToEntryId(queue[0].id) : null,
       }),
     ).catch((error: unknown) => {
       setApiError(
@@ -843,7 +850,7 @@ function HomeContent() {
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
         activeSection: "discussion",
-        discussionEntryId: nextTopic?.id ?? null,
+        discussionEntryId: nextTopic ? topicToEntryId(nextTopic.id) : null,
       }),
     ).catch((error: unknown) => {
       setApiError(
@@ -859,7 +866,7 @@ function HomeContent() {
     runMutation(() =>
       setNavigation(sessionSlug, participantToken, {
         activeSection: "discussion",
-        discussionEntryId: previousTopic?.id ?? null,
+        discussionEntryId: previousTopic ? topicToEntryId(previousTopic.id) : null,
       }),
     ).catch((error: unknown) => {
       setApiError(

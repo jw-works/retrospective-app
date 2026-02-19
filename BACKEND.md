@@ -1,15 +1,19 @@
 # Retrospective Backend (Barebones)
 
-This project now includes a minimal backend implemented with Next.js route handlers and a file-backed JSON store.
+This project now includes a minimal backend implemented with Next.js route handlers and a PostgreSQL store.
 
-Data is persisted in:
-- `data/retro-store.json`
+Data is persisted in PostgreSQL using `DATABASE_URL`.
+
+Required env vars:
+- `DATABASE_URL` (PostgreSQL connection string)
+- `AUTH_TOKEN_SECRET` (recommended outside local dev)
 
 ## Quick flow
 
-Run automated backend smoke tests:
+Run backend integration tests:
 
 ```bash
+npm run db:migrate
 npm run test:backend
 ```
 

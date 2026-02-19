@@ -1,106 +1,107 @@
 # Retrospective App
 
-A collaborative retrospective board built with Next.js App Router.
+Collaborative retrospective board built with Next.js App Router.
 
-## What This App Does
+## Current Status (February 19, 2026)
 
-- Creates a retrospective session with one admin/facilitator.
-- Lets participants join by shared link/session slug.
-- Supports adding "went right" and "went wrong" entries.
-- Enforces per-user vote limit (5 votes).
-- Allows grouping and drag/drop organization of entries.
-- Keeps all participants synchronized to the admin-controlled stage:
-  - `retro` -> `discussion` -> `happiness` -> `done`
-- Stores individual happiness scores and exposes average/count.
+The codebase is currently in a backend-hardening phase and has moved from file persistence to PostgreSQL.
+
+Implemented and active right now:
+- PostgreSQL persistence via `DATABASE_URL`
+- Explicit SQL migrations (`db/migrations/001_init.sql`) applied via `npm run db:migrate`
+- Transactional backend store with permission checks and core business rules
+- Integration test suite for backend API behavior (`tests/backend.integration.test.mjs`)
+- TypeScript strict checks and ESLint checks passing
+
+Still recommended next:
+- Add CI pipeline for migrations + lint + tests
+- Add frontend end-to-end tests (Playwright/Cypress)
+- Address npm audit vulnerabilities with controlled package upgrades
+
+## What The App Does
+
+- Creates a retrospective session with one admin/facilitator
+- Lets participants join via link/session slug
+- Supports `went_right` and `went_wrong` entries
+- Enforces a 5-vote cap per participant
+- Supports grouping and moving entries
+- Uses shared admin navigation (`retro` -> `discussion` -> `actions` -> `happiness` -> `done`)
+- Stores individual happiness scores and computes aggregate metrics
+- Supports action item creation/deletion (admin only)
 
 ## Tech Stack
 
 - Next.js 16 (App Router)
-- React + TypeScript
+- React 19 + TypeScript
 - Tailwind CSS 4
-- Radix UI primitives (`Dialog`) + lightweight shadcn-style wrappers
-- File-backed backend store (`data/retro-store.json`)
+- Radix UI primitives
+- PostgreSQL (`pg`)
 
 ## Project Structure
 
-- `app/page.tsx`
-: Main client page. Orchestrates session setup/join, board interactions, polling, and stage rendering.
-- `components/retro/retro-column.tsx`
-: Reusable board column UI for both "went right" and "went wrong".
-- `components/ui/*`
-: Shared primitives (`Button`, `Dialog`) used across the app.
-- `lib/retro/api.ts`
-: Frontend API client for all `/api/sessions/*` calls.
-- `lib/retro/session-storage.ts`
-: Browser storage helpers for active session slug/token.
-- `lib/retro/utils.ts`
-: Frontend utilities (join-code parsing, initials/tone selection, entry->UI shaping).
-- `lib/discussion.ts`
-: Pure sorting and queue-building logic for discussion stage.
-- `lib/backend/store.ts`
-: Core business logic + persistence (JSON store + permission/rule enforcement).
-- `lib/backend/types.ts`
-: Shared domain contracts for backend and frontend.
-- `lib/backend/http.ts`
-: Route-level helpers for consistent auth/error mapping.
-- `app/api/sessions/**`
-: HTTP route handlers that validate request shape and delegate to `backendStore`.
-- `scripts/backend-smoke-test.sh`
-: End-to-end backend smoke tests.
+- `app/page.tsx`: main client orchestration (setup/join/session flow)
+- `app/api/sessions/**`: backend HTTP routes
+- `lib/backend/store.ts`: business logic + Postgres persistence layer
+- `lib/backend/types.ts`: shared backend/frontend types
+- `lib/backend/http.ts`: API error/token helpers
+- `lib/retro/api.ts`: frontend API client
+- `scripts/db-migrate.mjs`: SQL migration runner
+- `db/migrations/001_init.sql`: initial schema migration
+- `tests/backend.integration.test.mjs`: integration tests against running Next server
 
-## Data Model and Persistence
+## Data Model
 
-Data is persisted to:
-
-- `data/retro-store.json`
-
-Main entities:
-
+Main persisted entities:
 - `sessions`
 - `participants`
 - `entries`
-- `groups`
+- `entry_groups`
 - `votes`
-- `happinessChecks`
+- `happiness_checks`
 - `navigation`
-- `authTokens`
+- `action_items`
+- `schema_migrations`
 
 Notes:
+- Participant auth tokens are self-signed HMAC tokens and are not stored in Postgres.
+- Backend expects schema to exist; run migrations before running app or tests.
 
-- This is simple file-based persistence intended for local/small deployments.
-- Concurrent writes are serialized through an in-process queue in `lib/backend/store.ts`.
+## Environment Variables
+
+Required:
+- `DATABASE_URL`: PostgreSQL connection string
+
+Recommended:
+- `AUTH_TOKEN_SECRET`: signing secret for participant tokens
+
+Optional:
+- `PGSSLMODE=require`: use for hosted Postgres that requires TLS
+- `AUTH_TOKEN_TTL_SECONDS`: participant token TTL (default `43200`)
+- `ERROR_MONITORING_WEBHOOK_URL`: optional error webhook
 
 ## Local Development
 
-Requirements:
-
-- Node.js 18+ (Node 20+ recommended)
-- npm
-
-Install dependencies:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-Run dev server:
+2. Apply DB migrations:
+
+```bash
+npm run db:migrate
+```
+
+3. Start dev server:
 
 ```bash
 npm run dev
 ```
 
-Open:
+4. Open:
 
 - `http://localhost:3000`
-
-## Environment Variables
-
-- `AUTH_TOKEN_SECRET`
-: HMAC secret used to sign participant tokens. Set this in every non-local environment.
-- `AUTH_TOKEN_TTL_SECONDS` (optional)
-: Participant token lifetime in seconds. Default: `43200` (12 hours).
-- `ERROR_MONITORING_WEBHOOK_URL` (optional)
-: If set, server errors are posted as JSON payloads to this webhook in addition to structured logs.
 
 ## Testing
 
@@ -110,88 +111,50 @@ Type check:
 npx tsc --noEmit
 ```
 
-Backend smoke tests:
+Lint:
 
 ```bash
+npm run lint
+```
+
+Backend integration tests (default backend test command):
+
+```bash
+npm run db:migrate
 npm run test:backend
 ```
 
 ## API Summary
 
-All APIs are under `/api/sessions`.
+All routes are under `/api/sessions`.
 
-- `POST /api/sessions` -> create session + admin token
-- `POST /api/sessions/:slug/join` -> join as participant
-- `GET /api/sessions/:slug/state` -> full read model
-- `POST /api/sessions/:slug/entries` -> create entry
-- `DELETE /api/sessions/:slug/entries` -> clear all entries (admin only)
-- `DELETE /api/sessions/:slug/entries/:entryId` -> delete entry
-- `POST /api/sessions/:slug/votes` -> add vote
-- `DELETE /api/sessions/:slug/votes/:entryId` -> remove vote
-- `POST /api/sessions/:slug/navigation` -> set shared stage (admin only)
-- `POST /api/sessions/:slug/happiness` -> upsert happiness score
-- `POST /api/sessions/:slug/groups` -> create group
-- `POST /api/sessions/:slug/groups/:groupId/entries` -> add entry to group
-- `DELETE /api/sessions/:slug/groups/:groupId/entries/:entryId` -> ungroup entry
-- `POST /api/sessions/:slug/entries/:entryId/move` -> move entry side
+- `POST /api/sessions`
+- `POST /api/sessions/:slug/join`
+- `GET /api/sessions/:slug/state`
+- `POST /api/sessions/:slug/entries`
+- `DELETE /api/sessions/:slug/entries`
+- `PATCH /api/sessions/:slug/entries/:entryId`
+- `DELETE /api/sessions/:slug/entries/:entryId`
+- `POST /api/sessions/:slug/entries/:entryId/move`
+- `POST /api/sessions/:slug/votes`
+- `DELETE /api/sessions/:slug/votes/:entryId`
+- `POST /api/sessions/:slug/navigation`
+- `POST /api/sessions/:slug/happiness`
+- `POST /api/sessions/:slug/groups`
+- `POST /api/sessions/:slug/groups/:groupId/entries`
+- `DELETE /api/sessions/:slug/groups/:groupId/entries/:entryId`
+- `POST /api/sessions/:slug/actions`
+- `DELETE /api/sessions/:slug/actions/:actionId`
 
 Authenticated endpoints require:
+- `x-participant-token: <token>`
 
-- Header: `x-participant-token: <token>`
+## Deployment Notes
 
-## Business Rules Implemented
-
-- Session creator is admin.
-- Non-admin users can delete only their own entries.
-- Admin can clear all entries.
-- Vote cap is 5 votes per participant.
-- Only admin can move the shared navigation section.
-- Happiness score range is 1..10.
-- Grouping only allowed for entries on the same side.
-
-## Deployment
-
-### Option A: Vercel (quickest)
-
-1. Push repo to GitHub/GitLab/Bitbucket.
-2. Import project in Vercel.
-3. Build command: `npm run build`
-4. Start command: `npm run start` (handled automatically by Vercel).
-
-Important for file-backed persistence:
-
-- Vercel serverless filesystem is ephemeral.
-- `data/retro-store.json` will not be durable across deployments/instances.
-- For production, migrate `lib/backend/store.ts` to a real database.
-
-### Option B: Docker / VM (persistent disk)
-
-Build:
-
-```bash
-npm ci
-npm run build
-```
-
-Run:
-
-```bash
-npm run start
-```
-
-Persist data:
-
-- Ensure `data/` is on a persistent volume.
-- Back up `data/retro-store.json`.
-
-## Production Hardening Recommendations
-
-- Replace JSON file store with PostgreSQL/SQLite + proper migrations.
-- Rotate `AUTH_TOKEN_SECRET` periodically and keep it in your secrets manager.
-- Add server-side rate limiting for session/join/vote endpoints.
-- Add integration tests for UI flows (Playwright/Cypress).
-- Add observability (structured logs + error monitoring).
+- Ensure `DATABASE_URL` is configured in runtime environment.
+- Run `npm run db:migrate` during deploy/startup before serving traffic.
+- For managed Postgres with TLS requirements, set `PGSSLMODE=require`.
 
 ## Related Docs
 
-- `BACKEND.md`: backend smoke usage and cURL examples.
+- `BACKEND.md` for cURL examples and backend flow details.

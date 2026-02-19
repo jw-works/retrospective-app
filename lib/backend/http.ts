@@ -22,6 +22,9 @@ export function mapErrorToResponse(error: unknown, context: Record<string, unkno
     return jsonError(error.message, 404);
   }
   if (error.message === "Vote limit reached") return jsonError(error.message, 409);
+  if (error.message === "Database schema missing. Run npm run db:migrate") {
+    return jsonError(error.message, 400);
+  }
 
   return jsonError(error.message || "Request failed", 400);
 }
